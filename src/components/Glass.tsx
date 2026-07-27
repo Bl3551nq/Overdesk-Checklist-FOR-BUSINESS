@@ -247,14 +247,12 @@ export const Glass: React.FC<GlassProps> = (rawProps) => {
     setTimeout(updateDisplacementMap, 0);
   }, [v.width, v.height]);
 
-  const [svgFilterSupported, setSvgFilterSupported] = useState(true);
+  const [svgFilterSupported, setSvgFilterSupported] = useState(false);
   const [backdropFilterSupported, setBackdropFilterSupported] = useState(true);
 
   useEffect(() => {
     const checkSupport = () => {
-      const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-      const isFirefox = /Firefox/.test(navigator.userAgent);
-      setSvgFilterSupported(!isWebkit && !isFirefox);
+      setSvgFilterSupported(false);
       setBackdropFilterSupported(CSS.supports("backdrop-filter", "blur(10px)"));
     };
     checkSupport();

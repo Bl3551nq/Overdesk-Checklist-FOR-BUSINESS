@@ -168,7 +168,7 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
   return (
     <div className="minimized-reminder-view animate-fade-in">
       {isEditingReminder ? (
-        <div className="reminder-edit-wrap" style={{ transform: 'translateY(-4px)' }}>
+        <div className="reminder-edit-wrap">
           <textarea
             autoFocus
             className="minimized-reminder-input"
@@ -257,7 +257,6 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
             padding: '0 6px',
             borderRadius: '12px',
             background: 'transparent',
-            transform: 'translateY(-5px)',
           }}
         >
           <div

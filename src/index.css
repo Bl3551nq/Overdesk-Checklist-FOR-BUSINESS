@@ -71,11 +71,12 @@ body.electron .title-input, body.electron .mode-label, body.electron a, body.ele
   z-index: 10;
   width: 320px;
   border-radius: 36px;
+  overflow: hidden;
   padding: 14px 20px 14px;
   background: 
-    radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 5% 5%, rgba(0, 0, 0, 0.6) 0%, transparent 50%),
     radial-gradient(circle at 90% 85%, var(--accent-soft) 0%, transparent 65%),
-    linear-gradient(145deg, rgba(14, 17, 30, 0.90) 0%, rgba(6, 8, 18, 0.94) 50%, rgba(2, 3, 10, 0.97) 100%);
+    linear-gradient(145deg, rgba(2, 3, 10, 0.97) 0%, rgba(5, 7, 18, 0.94) 50%, rgba(2, 3, 10, 0.97) 100%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(45px) saturate(230%);
   -webkit-backdrop-filter: blur(45px) saturate(230%);
@@ -119,11 +120,9 @@ body.electron .title-input, body.electron .mode-label, body.electron a, body.ele
 @keyframes cardIn {
   from {
     opacity: 0;
-    transform: scale(0.9) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
 }
 
@@ -302,6 +301,8 @@ body.electron .title-input, body.electron .mode-label, body.electron a, body.ele
   flex-shrink: 0;
   width: 100%;
   transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 5;
 }
 .card.minimized .icons {
   margin-bottom: 0;
@@ -313,6 +314,54 @@ body.electron .title-input, body.electron .mode-label, body.electron a, body.ele
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  z-index: 5;
+  opacity: 1;
+}
+
+/* Fine-tuned Glass Effect for Mode Icons Only */
+.mode-icon-glass {
+  position: relative;
+  overflow: hidden !important;
+}
+
+/* Light mode mode-icon glass */
+.card.light .mode-icon-glass {
+  backdrop-filter: blur(14px) saturate(1.6) brightness(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6) brightness(1.05);
+}
+
+.card.light .mode-icon-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 8;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.18) 45%, rgba(255, 255, 255, 0) 70%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.9), inset 0 -1px 1.5px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.25s ease, border-color 0.25s ease;
+}
+
+/* Dark mode mode-icon glass - significantly darker, rich glass appearance */
+.card:not(.light) .mode-icon-glass {
+  background: rgba(8, 10, 16, 0.72) !important;
+  backdrop-filter: blur(16px) saturate(1.2) brightness(0.55) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2) brightness(0.55) !important;
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.12), inset 0 -1px 3px rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.card:not(.light) .mode-icon-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 8;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.5) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.25s ease, border-color 0.25s ease;
 }
 
 .icon-btn {
@@ -335,30 +384,46 @@ body.electron .title-input, body.electron .mode-label, body.electron a, body.ele
 .icon-btn svg {
   width: 22px;
   height: 22px;
-  fill: currentColor;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   display: block;
+}
+.icon-btn .custom-svg-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 @keyframes activeModeIconAnimate {
-  0%, 88%, 100% {
+  0%, 92%, 100% {
     transform: scale(1) rotate(0deg);
   }
-  90% {
-    transform: scale(1.2) rotate(-10deg);
-  }
-  92.5% {
-    transform: scale(1.25) rotate(10deg);
+  93.5% {
+    transform: scale(1.22) rotate(-9deg);
   }
   95% {
-    transform: scale(1.15) rotate(-5deg);
+    transform: scale(1.28) rotate(9deg);
   }
-  97.5% {
+  97% {
+    transform: scale(1.15) rotate(-4deg);
+  }
+  98.5% {
     transform: scale(1.08) rotate(2deg);
   }
 }
 
-.icon-btn.active svg {
-  animation: activeModeIconAnimate 15s ease-in-out infinite;
+.icon-btn.active svg,
+.icon-btn.active img,
+.icon-btn.active .custom-svg-icon,
+.icon-btn.active .custom-svg-icon svg {
+  animation: activeModeIconAnimate 25s ease-in-out infinite;
   transform-origin: center center;
 }
 .icon-btn:active {
@@ -384,12 +449,18 @@ body.electron .title-input, body.electron .mode-label, body.electron a, body.ele
 .icon-btn.has-liquid svg {
   filter: drop-shadow(0 0 2px rgba(0,0,0,0.25));
 }
+.card.light .icon-btn {
+  color: #000000;
+}
 .card.light .icon-btn.has-liquid {
-  color: rgba(80, 80, 90, 0.85);
+  color: #000000;
+}
+.card.light .icon-btn.has-liquid svg {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
 }
 .card.light .icon-btn:not(.active):not(.has-liquid) {
   border: 1px solid var(--icon-border);
-  color: rgba(0, 0, 0, 0.6);
+  color: #000000;
 }
 
 body.editing .icon-btn::after {
@@ -468,6 +539,28 @@ body.editing .icon-btn::after {
   transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Card Content Stacking Layering Above Wallpaper */
+.top-bar,
+.liquid-nav-wrapper,
+.header-section,
+.mode-row,
+.title-wrap,
+.title,
+.title-container-editable,
+.mode-counter,
+.divider,
+.card-body,
+.scroll-area,
+.options,
+.option,
+.opt-text,
+.footer-container,
+.minimized-reminder-view,
+.settings-panel {
+  position: relative;
+  z-index: 2;
+}
+
 .title-wrap {
   margin-bottom: 12px;
   flex-shrink: 0;
@@ -475,9 +568,10 @@ body.editing .icon-btn::after {
   align-items: baseline;
   gap: 8px;
   flex-wrap: wrap;
-  max-height: 100px;
+  max-height: 120px;
   opacity: 1;
-  overflow: hidden;
+  overflow: visible;
+  padding-bottom: 4px;
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -486,13 +580,19 @@ body.editing .icon-btn::after {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.28;
+  padding-bottom: 6px;
   display: inline-block;
   min-width: 40px;
   border-radius: 8px;
   transition: opacity 0.18s, transform 0.18s, color 0.3s;
   cursor: default;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85), 0 2px 12px rgba(0, 0, 0, 0.6);
 }
+.card.light .title {
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.9), 0 2px 8px rgba(255, 255, 255, 0.7);
+}
+
 .title.editable {
   cursor: text;
 }
@@ -511,10 +611,11 @@ body.editing .icon-btn::after {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
+  line-height: 1.28;
   background: var(--input-bg);
   border: 1px solid var(--input-border);
-  border-radius: 9px;
-  padding: 1px 9px;
+  border-radius: 99px;
+  padding: 2px 9px 6px 9px;
   outline: none;
   width: 100%;
   caret-color: var(--text);
@@ -525,10 +626,14 @@ body.editing .icon-btn::after {
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);
-  opacity: 0.8;
+  opacity: 0.95;
   letter-spacing: 0.02em;
   transition: opacity 0.2s, color 0.3s;
   flex-shrink: 0;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.85);
+}
+.card.light .mode-counter {
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.85);
 }
 
 .divider {
@@ -561,7 +666,10 @@ body.editing .icon-btn::after {
 }
 .card.minimized {
   padding-top: 14px;
-  padding-bottom: 6px;
+  padding-bottom: 0px;
+}
+.card.minimized .top-bar {
+  margin-bottom: 0px;
 }
 
 /* Minimized Reminder View Styling */
@@ -653,8 +761,8 @@ body.editing .icon-btn::after {
 .scroll-area {
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 2px;
-  padding-bottom: 4px;
+  padding-top: 6px;
+  padding-bottom: 6px;
   padding-right: 6px;
   height: 176px;
   flex-shrink: 0;
@@ -691,6 +799,9 @@ body.editing .icon-btn::after {
   display: flex;
   flex-direction: column;
   transition: opacity 0.18s;
+  position: relative;
+  z-index: 2;
+  padding: 2px 0;
 }
 .options.switching {
   opacity: 0;
@@ -699,49 +810,69 @@ body.editing .icon-btn::after {
 .option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 14px;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 12px;
   font-size: 15px;
-  font-weight: 400;
-  color: var(--text-mid);
+  font-weight: 500;
+  color: var(--text);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.18s, border-color 0.18s, transform 0.15s;
   letter-spacing: -0.01em;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 7px;
+  position: relative;
+  z-index: 3;
+}
+.card.light .option {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
 }
 .option:hover {
-  background: var(--opt-hover);
+  background: rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.card.light .option:hover {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(0, 0, 0, 0.15);
 }
 .option:active {
-  background: var(--opt-active);
+  transform: scale(0.99);
 }
 
 /* Checklist Checkbox Box Styling */
 .check-box {
-  width: 17px;
-  height: 17px;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   flex-shrink: 0;
-  border: 1.8px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.18s, border-color 0.18s;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 .card.light .check-box {
-  border-color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.45);
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 .option.selected .check-box {
   background: var(--accent);
   border-color: var(--accent);
 }
 .check-box svg {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   stroke: #fff;
   fill: none;
-  stroke-width: 2.8;
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0;
@@ -760,33 +891,47 @@ body.editing .icon-btn::after {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
+  line-height: 1.32;
+  padding-bottom: 2px;
+  color: #ffffff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.7);
+}
+.card.light .opt-text {
+  color: #0f172a;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95), 0 0 8px rgba(255, 255, 255, 0.85);
 }
 .option.selected .opt-text {
   text-decoration: line-through;
-  text-decoration-color: var(--text-dim);
-  color: var(--text-dim);
-  opacity: 0.6;
+  text-decoration-color: var(--accent, #3b82f6);
+  color: rgba(255, 255, 255, 0.75);
+  opacity: 0.85;
+}
+.card.light .option.selected .opt-text {
+  color: #475569;
+  opacity: 0.85;
 }
 
 .opt-input {
   flex: 1;
   font-size: 15px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--text);
   background: var(--input-bg);
   border: 1px solid var(--input-border);
-  border-radius: 7px;
-  padding: 2px 7px;
+  border-radius: 8px;
+  padding: 3px 8px;
   outline: none;
   caret-color: var(--text);
   display: none;
   min-width: 0;
+  line-height: 1.3;
 }
 
 /* ── Del & Add ── */
 .del-btn {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--del-bg);
   border: none;
@@ -796,7 +941,7 @@ body.editing .icon-btn::after {
   justify-content: center;
   color: var(--del-color);
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
   transition: background 0.15s;
 }
@@ -804,17 +949,25 @@ body.editing .icon-btn::after {
   display: none;
   align-items: center;
   gap: 8px;
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: 12px;
   font-size: 14px;
+  font-weight: 500;
   color: var(--add-color);
   cursor: pointer;
   border: 1.5px dashed var(--add-border);
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   width: 100%;
   text-align: left;
   transition: all 0.15s;
-  margin-top: 5px;
+  margin-top: 6px;
+  position: relative;
+  z-index: 3;
+}
+.card.light .add-btn {
+  background: rgba(255, 255, 255, 0.45);
 }
 .add-btn svg {
   width: 14px;
@@ -833,32 +986,43 @@ body.editing .option { cursor: default; }
 /* ══ Reset Checklist Row ══ */
 .reset-wrap {
   cursor: pointer;
-  margin-top: 4px;
-  border-radius: 10px;
+  margin-top: 6px;
+  border-radius: 12px;
   border: 1px solid var(--divider);
   transition: all 0.15s;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  position: relative;
+  z-index: 3;
+}
+.card.light .reset-wrap {
+  background: rgba(255, 255, 255, 0.45);
 }
 .reset-wrap:hover {
-  background: rgba(255, 60, 60, 0.1);
-  border-color: rgba(255, 60, 60, 0.3);
+  background: rgba(255, 60, 60, 0.15);
+  border-color: rgba(255, 60, 60, 0.35);
 }
 .reset-wrap:hover .reset-btn {
-  color: rgba(255, 100, 100, 0.9);
+  color: rgba(255, 120, 120, 0.95);
 }
 .reset-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  padding: 9px 10px;
-  border-radius: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
   background: transparent;
   border: none;
-  color: var(--text-dim);
-  font-size: 11px;
-  cursor: pointer;
-  flex-shrink: 0;
-  pointer-events: none;
+  color: var(--text-mid);
+  font-size: 13px;
+  font-weight: 500;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.card.light .reset-btn {
+  color: #334155;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.85);
 }
 .reset-btn svg {
   width: 12px;
@@ -929,12 +1093,45 @@ body.editing .option { cursor: default; }
 }
 
 .settings-body {
-  overflow: hidden !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+  overflow-y: auto !important;
+  max-height: 350px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) rgba(0, 0, 0, 0.1);
 }
 .settings-body::-webkit-scrollbar {
-  display: none !important;
+  width: 5px !important;
+  display: block !important;
+}
+.settings-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.12) !important;
+  border-radius: 10px !important;
+}
+.settings-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  transition: all 0.2s ease !important;
+}
+.settings-body::-webkit-scrollbar-thumb:hover,
+.settings-body::-webkit-scrollbar-thumb:active {
+  background: var(--accent) !important;
+  box-shadow: 0 0 10px var(--accent) !important;
+}
+
+body.theme-light .settings-body {
+  scrollbar-color: rgba(0, 0, 0, 0.28) rgba(0, 0, 0, 0.04);
+}
+body.theme-light .settings-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+body.theme-light .settings-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+body.theme-light .settings-body::-webkit-scrollbar-thumb:hover,
+body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
+  background: var(--accent) !important;
 }
 @keyframes pickerIn {
   from { opacity: 0; transform: scale(0.95); }
@@ -1012,10 +1209,11 @@ body.editing .option { cursor: default; }
 .picker-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
+  gap: 6px 4px;
   overflow-y: auto;
   flex: 1;
   scrollbar-width: none;
+  padding: 4px 2px;
 }
 .picker-grid::-webkit-scrollbar {
   display: none;
@@ -1025,35 +1223,118 @@ body.editing .option { cursor: default; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 9px 3px 7px;
-  border-radius: 10px;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px 5px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   border: 1px solid transparent;
 }
 .picker-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.12);
 }
 .picker-item.current {
   background: var(--accent-soft);
-  border-color: rgba(150, 80, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
 }
+
 .picker-item svg {
-  width: 19px;
-  height: 19px;
+  width: 18px !important;
+  height: 18px !important;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.95) !important;
+  stroke: currentColor;
+}
+.card.light .picker-item svg {
+  color: rgba(0, 0, 0, 0.82) !important;
+}
+
+.picker-item .custom-svg-icon {
+  width: 18px !important;
+  height: 18px !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+.card.light .picker-item .custom-svg-icon {
+  color: rgba(0, 0, 0, 0.82) !important;
+}
+
+.picker-item img,
+.picker-item .custom-img-icon {
+  width: 18px !important;
+  height: 18px !important;
+  object-fit: contain;
+  display: block;
+}
+
+.picker-item.picker-upload {
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.picker-item.picker-upload:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.picker-item.picker-upload svg {
+  color: var(--accent) !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.picker-item-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(235, 45, 45, 0.85);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 5;
+}
+.picker-item-delete:hover {
+  background: #ff3333;
+  transform: scale(1.15);
+}
+.picker-item:hover .picker-item-delete {
+  opacity: 1;
+}
+
+.custom-svg-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: currentColor;
+  stroke: currentColor;
+}
+.card.light .picker-item.picker-upload {
+  border-color: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.03);
 }
 .picker-item span {
-  font-size: 7.5px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
   text-align: center;
   letter-spacing: 0.02em;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   max-width: 100%;
+}
+.card.light .picker-item span {
+  color: rgba(0, 0, 0, 0.65);
 }
 
 .card.light .icon-picker {
@@ -1297,3 +1578,90 @@ body.editing .option { cursor: default; }
   color: rgba(255,255,255,0.25);
   text-align: center;
 }
+
+/* Mode Icon Completion Glow disabled (bubble animation is preserved) */
+.icon-wrap.splash-active {
+  /* No icon glow box-shadow animation */
+}
+
+.icon-splash-droplets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.icon-splash-droplets .i-drop {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+  animation: iconDropSplash 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.icon-splash-droplets .d1 { left: 22%; bottom: 10px; animation-delay: 0.05s; }
+.icon-splash-droplets .d2 { left: 45%; bottom: 6px; animation-delay: 0.14s; }
+.icon-splash-droplets .d3 { left: 68%; bottom: 12px; animation-delay: 0.22s; }
+.icon-splash-droplets .d4 { left: 34%; bottom: 8px; animation-delay: 0.32s; }
+.icon-splash-droplets .d5 { left: 58%; bottom: 14px; animation-delay: 0.42s; }
+
+@keyframes iconDropSplash {
+  0% {
+    opacity: 0;
+    transform: translate(0px, 0px) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-4px, -18px) scale(1.2);
+  }
+  65% {
+    opacity: 0.8;
+    transform: translate(-10px, -34px) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-16px, -48px) scale(0.2);
+  }
+}
+
+/* Global Animations Disabled Mode */
+body.animations-disabled *,
+body.animations-disabled *::before,
+body.animations-disabled *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Edit Mode Drag & Drop / Reorder Styles */
+.icon-wrap.dragging-mode {
+  opacity: 0.45;
+  transform: scale(0.92);
+}
+
+.icon-wrap.drag-over-mode {
+  transform: scale(1.12);
+  filter: drop-shadow(0 0 10px var(--accent, #3b82f6));
+}
+
+.option.dragging-option {
+  opacity: 0.45;
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-style: dashed !important;
+}
+
+.reorder-item-btn {
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.reorder-item-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22) !important;
+  opacity: 1 !important;
+}
+
+.card.light .reorder-item-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.14) !important;
+}
+

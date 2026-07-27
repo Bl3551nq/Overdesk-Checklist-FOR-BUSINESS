@@ -2,6 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import overdeskLogo from './logo.svg';
 import { MinimizedReminderView } from './components/MinimizedReminderView';
 import { Glass } from './components/Glass';
+import GooeyNav, { triggerGooeyParticles } from './components/GooeyNav';
+
+import wallpaperExecutiveArt from './assets/images/wallpaper_executive_art_1784998270755.jpg';
+import wallpaperCyberSkull from './assets/images/wallpaper_cyber_skull_1784998284302.jpg';
+import wallpaperOfficePurple from './assets/images/wallpaper_office_purple_1784998297786.jpg';
+import wallpaperFieryBeast from './assets/images/wallpaper_fiery_beast_1784998309493.jpg';
+
+const PRESET_WALLPAPERS = [
+  { id: 'executive_art', name: 'Executive Boardroom', url: wallpaperExecutiveArt },
+  { id: 'cyber_skull', name: 'Cyber Neon Skull', url: wallpaperCyberSkull },
+  { id: 'office_purple', name: 'Executive Office', url: wallpaperOfficePurple },
+  { id: 'fiery_beast', name: 'Fiery Beast', url: wallpaperFieryBeast },
+];
 
 // Declaration to access global Electron API from preload script
 declare global {
@@ -109,13 +122,10 @@ const ICON_LIBRARY: Record<string, { label: string; svg: React.ReactNode }> = {
   target: {
     label: 'Target',
     svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-        <circle cx="12" cy="12" r="8.5" />
-        <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
-        <line x1="12" y1="2" x2="12" y2="6" />
-        <line x1="12" y1="18" x2="12" y2="22" />
-        <line x1="2" y1="12" x2="6" y2="12" />
-        <line x1="18" y1="12" x2="22" y2="12" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
       </svg>
     ),
   },
@@ -367,10 +377,8 @@ const ICON_LIBRARY: Record<string, { label: string; svg: React.ReactNode }> = {
   shield: {
     label: 'DND',
     svg: (
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2L4 6v6c0 5.25 3.5 9.74 8 11 4.5-1.26 8-5.75 8-11V6L12 2z" opacity="0.9" />
-        <rect x="9.2" y="9" width="2" height="6" rx="0.6" fill="#fff" opacity="0.85" />
-        <rect x="12.8" y="9" width="2" height="6" rx="0.6" fill="#fff" opacity="0.85" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>
     ),
   },
@@ -478,6 +486,21 @@ interface ModeDetail {
   defaultSoft: string;
   options: string[];
 }
+
+const isVideoUrl = (url: string): boolean => {
+  if (!url) return false;
+  if (url.startsWith('data:video/')) return true;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.ogg') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.m4v') ||
+    cleanUrl.endsWith('.mkv') ||
+    cleanUrl.endsWith('.avi')
+  );
+};
 
 const DEFAULT_MODES: Record<string, ModeDetail> = {
   business: {
@@ -626,6 +649,520 @@ export default function App() {
     localStorage.setItem('fm_animate_minimized_text', String(val));
   };
 
+  const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('fm_animations_enabled');
+      return saved !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    if (!animationsEnabled) {
+      document.body.classList.add('animations-disabled');
+    } else {
+      document.body.classList.remove('animations-disabled');
+    }
+  }, [animationsEnabled]);
+
+  const handleAnimationsEnabledChange = (val: boolean) => {
+    setAnimationsEnabled(val);
+    localStorage.setItem('fm_animations_enabled', String(val));
+  };
+
+  // Wallpaper Background State & Handlers
+  const [wallpaperUrl, setWallpaperUrl] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('fm_wallpaper_url');
+      return saved !== null ? saved : wallpaperExecutiveArt;
+    } catch (e) {
+      return wallpaperExecutiveArt;
+    }
+  });
+
+  const [customWallpapers, setCustomWallpapers] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('fm_custom_wallpapers');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    // If there's an existing saved custom wallpaperUrl not in PRESET_WALLPAPERS, populate it
+    const initialUrl = localStorage.getItem('fm_wallpaper_url');
+    if (initialUrl && !PRESET_WALLPAPERS.some((wp) => wp.url === initialUrl)) {
+      return [initialUrl];
+    }
+    return [];
+  });
+
+  const [wallpaperOpacity, setWallpaperOpacity] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('fm_wallpaper_opacity');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) return parsed;
+      }
+    } catch (e) {}
+    return 60;
+  });
+
+  const wallpaperFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleWallpaperUrlChange = (url: string) => {
+    setWallpaperUrl(url);
+    localStorage.setItem('fm_wallpaper_url', url);
+  };
+
+  const handleWallpaperOpacityChange = (val: number) => {
+    setWallpaperOpacity(val);
+    localStorage.setItem('fm_wallpaper_opacity', String(val));
+  };
+
+  const MAX_WALLPAPER_SIZE = 3 * 1024 * 1024; // 3MB
+
+  const handleCustomWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_WALLPAPER_SIZE) {
+      setImportStatus({
+        type: 'error',
+        message: `File size exceeds 3MB limit (${(file.size / (1024 * 1024)).toFixed(2)}MB). Please choose a file under 3MB.`,
+      });
+      setTimeout(() => setImportStatus(null), 4500);
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setCustomWallpapers((prev) => {
+          const updated = [result, ...prev.filter((url) => url !== result)].slice(0, 8);
+          try {
+            localStorage.setItem('fm_custom_wallpapers', JSON.stringify(updated));
+          } catch (err) {
+            console.warn('LocalStorage quota reached for custom wallpapers', err);
+          }
+          return updated;
+        });
+        handleWallpaperUrlChange(result);
+        const isVid = file.type.startsWith('video/') || isVideoUrl(result);
+        setImportStatus({
+          type: 'success',
+          message: isVid ? 'Video wallpaper applied! ✓' : 'Wallpaper image applied! ✓',
+        });
+        setTimeout(() => setImportStatus(null), 3500);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDeleteCustomWallpaper = (e: React.MouseEvent, urlToDelete: string) => {
+    e.stopPropagation();
+    setCustomWallpapers((prev) => {
+      const updated = prev.filter((url) => url !== urlToDelete);
+      try {
+        localStorage.setItem('fm_custom_wallpapers', JSON.stringify(updated));
+      } catch (err) {}
+      return updated;
+    });
+    if (wallpaperUrl === urlToDelete) {
+      handleWallpaperUrlChange(wallpaperExecutiveArt);
+    }
+  };
+
+  // Import & Export Checklist State & Handlers
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleExportChecklist = () => {
+    try {
+      let txtContent = ``;
+
+      Object.entries(modes).forEach(([_, mVal]) => {
+        const detail = mVal as ModeDetail;
+        txtContent += `[${detail.title}]\n`;
+        detail.options.forEach((opt) => {
+          txtContent += `- ${opt}\n`;
+        });
+        txtContent += `\n`;
+      });
+
+      const dataStr = 'data:text/plain;charset=utf-8,' + encodeURIComponent(txtContent.trim());
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `overdesk_checklist_${new Date().toISOString().slice(0, 10)}.txt`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      setImportStatus({ type: 'success', message: 'Exported checklist to .txt successfully!' });
+      setTimeout(() => setImportStatus(null), 3500);
+    } catch (err) {
+      setImportStatus({ type: 'error', message: 'Export failed.' });
+    }
+  };
+
+  const generateChecklistTemplate = () => {
+    try {
+      const templateTxt = `[Work & Projects]
+- Review daily goals & priorities
+- Check priority emails and messages
+- Complete deep focus work session
+- Wrap up daily progress summary
+
+[Health & Fitness]
+- Drink morning glass of water
+- 30 min exercise or walk
+- Prepare healthy meals
+- Evening wind-down routine
+
+[Personal & Home]
+- Tidy up workstation desk
+- Read 15 pages of a book
+- Plan upcoming schedule
+`;
+
+      const dataStr = 'data:text/plain;charset=utf-8,' + encodeURIComponent(templateTxt.trim());
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', 'checklist_template.txt');
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      setImportStatus({ type: 'success', message: 'Template (.txt) downloaded! Edit & import anytime.' });
+      setTimeout(() => setImportStatus(null), 3500);
+    } catch (err) {
+      setImportStatus({ type: 'error', message: 'Failed to download template.' });
+    }
+  };
+
+  const handleImportChecklistFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = (event.target?.result as string) || '';
+
+        const itemsToProcess: Array<{
+          id: string;
+          heading: string;
+          items: string[];
+          accent?: string;
+          soft?: string;
+          icon?: string;
+        }> = [];
+
+        // Check if content looks like JSON
+        let isJson = false;
+        try {
+          const trimmed = content.trim();
+          if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            const parsed = JSON.parse(content);
+            isJson = true;
+
+            if (Array.isArray(parsed.checklists)) {
+              parsed.checklists.forEach((item: any, idx: number) => {
+                if (!item || typeof item !== 'object') return;
+                const id = item.id || item.key || `mode_${idx + 1}`;
+                const rawHeading = String(item.heading || item.title || item.name || `Checklist ${idx + 1}`).trim();
+                const heading = rawHeading.slice(0, 30) || `Checklist ${idx + 1}`;
+                const rawItems = item.items || item.options || item.tasks || [];
+                const items = Array.isArray(rawItems)
+                  ? rawItems.map((opt: any) => String(opt || '').trim().slice(0, 100)).filter(Boolean)
+                  : [];
+                itemsToProcess.push({
+                  id,
+                  heading,
+                  items: items.length > 0 ? items : ['New task item'],
+                  accent: item.accent,
+                  soft: item.soft,
+                  icon: item.icon,
+                });
+              });
+            } else if (parsed.modes && typeof parsed.modes === 'object') {
+              Object.entries(parsed.modes).forEach(([mKey, mVal]: [string, any]) => {
+                if (!mVal || typeof mVal !== 'object') return;
+                const rawHeading = String(mVal.title || mVal.heading || mVal.name || 'Custom Mode').trim();
+                const heading = rawHeading.slice(0, 30) || 'Custom Mode';
+                const rawItems = mVal.options || mVal.items || mVal.tasks || [];
+                const items = Array.isArray(rawItems)
+                  ? rawItems.map((opt: any) => String(opt || '').trim().slice(0, 100)).filter(Boolean)
+                  : [];
+                itemsToProcess.push({
+                  id: mKey,
+                  heading,
+                  items: items.length > 0 ? items : ['New task item'],
+                  accent: mVal.accent,
+                  soft: mVal.soft,
+                  icon: mVal.icon || (parsed.iconAssignments ? parsed.iconAssignments[mKey] : undefined),
+                });
+              });
+            } else if (Array.isArray(parsed)) {
+              if (parsed.every((x) => typeof x === 'string')) {
+                itemsToProcess.push({
+                  id: 'imported',
+                  heading: 'Imported Checklist',
+                  items: parsed.map((s) => String(s).trim().slice(0, 100)).filter(Boolean),
+                });
+              } else {
+                parsed.forEach((item: any, idx: number) => {
+                  if (!item || typeof item !== 'object') return;
+                  const id = item.id || item.key || `mode_${idx + 1}`;
+                  const rawHeading = String(item.heading || item.title || item.name || `Checklist ${idx + 1}`).trim();
+                  const heading = rawHeading.slice(0, 30) || `Checklist ${idx + 1}`;
+                  const rawItems = item.items || item.options || item.tasks || [];
+                  const items = Array.isArray(rawItems)
+                    ? rawItems.map((opt: any) => String(opt || '').trim().slice(0, 100)).filter(Boolean)
+                    : [];
+                  itemsToProcess.push({
+                    id,
+                    heading,
+                    items: items.length > 0 ? items : ['New task item'],
+                    accent: item.accent,
+                    soft: item.soft,
+                    icon: item.icon,
+                  });
+                });
+              }
+            }
+          }
+        } catch {
+          isJson = false;
+        }
+
+        // If not JSON or JSON produced no items, parse as plain .txt format!
+        if (!isJson || itemsToProcess.length === 0) {
+          const lines = content.split(/\r?\n/);
+          let currentHeading = 'Imported Checklist';
+          let currentId = 'imported';
+          let currentItems: string[] = [];
+          let modeCount = 0;
+
+          const flushCurrent = () => {
+            if (currentItems.length > 0 || modeCount > 0) {
+              const cleanHeading = currentHeading.replace(/^\[+|\]+$/g, '').trim().slice(0, 30) || 'Checklist';
+              itemsToProcess.push({
+                id: currentId,
+                heading: cleanHeading,
+                items: currentItems.length > 0 ? currentItems : ['New task item'],
+              });
+            }
+          };
+
+          lines.forEach((line) => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
+
+            // Strict comment line filter: Ignore ANY line starting with #, //, or --
+            if (trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith('--')) {
+              return;
+            }
+
+            // Heading match 1: [Heading Name]
+            const bracketMatch = trimmed.match(/^\[([^\]]+)\]$/);
+            // Heading match 2: Colon heading like "Work & Projects:" (short, under 32 chars)
+            const colonMatch = trimmed.length <= 32 ? trimmed.match(/^([A-Za-z0-9\s&'-]{2,32}):$/) : null;
+            // Heading match 3: MODE: Heading Name
+            const modePrefixMatch = trimmed.match(/^(?:MODE|LIST|CHECKLIST)\s*:\s*(.+)$/i);
+
+            const matchedHeading = bracketMatch
+              ? bracketMatch[1].trim()
+              : (colonMatch
+                  ? colonMatch[1].trim()
+                  : (modePrefixMatch
+                      ? modePrefixMatch[1].trim()
+                      : null));
+
+            if (matchedHeading) {
+              if (currentItems.length > 0 || modeCount > 0) {
+                flushCurrent();
+              }
+              modeCount++;
+              const cleanH = matchedHeading.replace(/^\[+|\]+$/g, '').trim().slice(0, 30);
+              currentHeading = cleanH || `Checklist ${modeCount}`;
+              currentId = cleanH.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `mode_${modeCount}`;
+              currentItems = [];
+            } else {
+              // Regular item line - clean leading bullet formatting (- *, •, 1., [ ], [x], etc.)
+              let cleanItem = trimmed.replace(/^([-*•+]|\[[ xX]?\]|\d+[\.\)])\s*/, '').trim();
+              if (cleanItem) {
+                currentItems.push(cleanItem.slice(0, 100));
+              }
+            }
+          });
+
+          if (currentItems.length > 0 || (modeCount > 0 && itemsToProcess.length === 0)) {
+            flushCurrent();
+          }
+        }
+
+        if (itemsToProcess.length === 0) {
+          setImportStatus({ type: 'error', message: 'No valid mode headings or items found in file.' });
+          return;
+        }
+
+        const existingKeys = Object.keys(modes);
+        const importedModes: Record<string, ModeDetail> = {};
+        const importedSelections: Record<string, number[]> = {};
+        const importedIcons: Record<string, string> = { ...iconAssignments };
+
+        itemsToProcess.forEach((item, index) => {
+          // Find matching existing mode key by exact ID, title match, or position index
+          let matchedKey: string | null = null;
+          if (modes[item.id]) {
+            matchedKey = item.id;
+          } else {
+            const foundKey = existingKeys.find(
+              (k) => modes[k] && modes[k].title.trim().toLowerCase() === item.heading.trim().toLowerCase()
+            );
+            if (foundKey) {
+              matchedKey = foundKey;
+            } else if (existingKeys[index] && modes[existingKeys[index]]) {
+              matchedKey = existingKeys[index];
+            }
+          }
+
+          let mKey = item.id;
+          if (matchedKey && !importedModes[matchedKey]) {
+            mKey = matchedKey;
+          } else if (!mKey || importedModes[mKey]) {
+            mKey = `custom_mode_${index + 1}`;
+          }
+
+          const existingModeData = (matchedKey && modes[matchedKey]) || modes[mKey];
+          const defaultAccentList = [
+            'rgba(30, 140, 255, 0.9)',
+            'rgba(0, 190, 80, 0.9)',
+            'rgba(140, 0, 225, 0.9)',
+            'rgba(215, 25, 75, 0.9)',
+            'rgba(220, 100, 0, 0.9)',
+          ];
+          const defaultSoftList = [
+            'rgba(60, 170, 255, 0.18)',
+            'rgba(0, 230, 100, 0.16)',
+            'rgba(170, 0, 255, 0.16)',
+            'rgba(255, 40, 100, 0.16)',
+            'rgba(255, 140, 0, 0.18)',
+          ];
+
+          const accent = item.accent || existingModeData?.accent || defaultAccentList[index % defaultAccentList.length];
+          const soft = item.soft || existingModeData?.soft || defaultSoftList[index % defaultSoftList.length];
+
+          importedModes[mKey] = {
+            title: item.heading,
+            accent,
+            soft,
+            defaultAccent: existingModeData?.defaultAccent || accent,
+            defaultSoft: existingModeData?.defaultSoft || soft,
+            options: item.items,
+          };
+
+          importedSelections[mKey] = [];
+
+          // Preserve existing icon assignments for mode
+          const existingIcon = (matchedKey && iconAssignments[matchedKey]) || iconAssignments[mKey];
+          if (item.icon) {
+            importedIcons[mKey] = item.icon;
+          } else if (existingIcon) {
+            importedIcons[mKey] = existingIcon;
+          } else if (!importedIcons[mKey]) {
+            const defaultIcons = ['briefcase', 'home', 'laptop', 'shield', 'calendar'];
+            importedIcons[mKey] = defaultIcons[index % defaultIcons.length];
+          }
+        });
+
+        setModes(importedModes);
+        setSelections(importedSelections);
+        setIconAssignments(importedIcons);
+
+        localStorage.setItem('fm_modes', JSON.stringify(importedModes));
+        localStorage.setItem('fm_icons', JSON.stringify(importedIcons));
+        Object.keys(importedModes).forEach((k) => {
+          localStorage.setItem('fm_sel_' + k, JSON.stringify(importedSelections[k] || []));
+        });
+
+        // Set active mode to first imported mode so new checklist immediately displays on screen!
+        const firstKey = Object.keys(importedModes)[0];
+        if (firstKey) {
+          setCurrentMode(firstKey);
+        }
+
+        playSoundChime('complete');
+        setImportStatus({
+          type: 'success',
+          message: `Imported ${itemsToProcess.length} mode heading(s) & items successfully! ✓`,
+        });
+        setTimeout(() => setImportStatus(null), 4000);
+      } catch (err) {
+        setImportStatus({ type: 'error', message: 'Failed to parse text file.' });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Reset App logic (Double click to confirm)
+  const [resetConfirming, setResetConfirming] = useState<boolean>(false);
+  const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const performAppReset = () => {
+    try {
+      localStorage.clear();
+    } catch (e) {
+      console.error('Failed to clear localStorage:', e);
+    }
+
+    setModes(JSON.parse(JSON.stringify(DEFAULT_MODES)));
+    setIconAssignments({
+      business: 'briefcase',
+      life: 'coffee',
+      pc: 'pc',
+      sync: 'sync',
+      alerts: 'bell',
+    });
+    setCustomIcons({});
+    setCurrentMode('business');
+    setEditMode(false);
+    setIsLight(false);
+    setMinimized(false);
+    setScale(1);
+    setShowCountdown(true);
+    setCountdownDuration(300);
+    setCountdownTimeLeft(300);
+    setIsTimerRunning(false);
+    setAlarmEnabled(true);
+    setAnimateMinimizedText(true);
+    setAnimationsEnabled(true);
+    setWallpaperUrl(wallpaperExecutiveArt);
+    setCustomWallpapers([]);
+    setWallpaperOpacity(60);
+    setResetConfirming(false);
+    setImportStatus({ type: 'success', message: 'App reset to default settings successfully! ✓' });
+    setTimeout(() => setImportStatus(null), 3500);
+  };
+
+  const handleResetAppClick = () => {
+    if (resetConfirming) {
+      performAppReset();
+    } else {
+      setResetConfirming(true);
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => {
+        setResetConfirming(false);
+      }, 3500);
+    }
+  };
+
+  const handleResetAppDoubleClick = () => {
+    performAppReset();
+  };
+
   // Everyday Reminder State (Minimized Mode - Max 16 words & 100 chars)
   const clampWords = (text: string, maxWords: number = 16, maxChars: number = 100) => {
     let trimmed = text.trim();
@@ -672,6 +1209,20 @@ export default function App() {
   const [licenseError, setLicenseError] = useState<boolean>(false);
   const [licenseAPIErrorText, setLicenseAPIErrorText] = useState<string>('');
 
+  // Drag reorder states
+  const isDraggingModeRef = useRef<boolean>(false);
+  const [modeDragState, setModeDragState] = useState<{
+    activeKey: string;
+    fromIdx: number;
+    currentIdx: number;
+    startX: number;
+    currentX: number;
+  } | null>(null);
+  const draggedModeIdxRef = useRef<number | null>(null);
+  const [draggedModeIdx, setDraggedModeIdx] = useState<number | null>(null);
+  const [dragOverModeIdx, setDragOverModeIdx] = useState<number | null>(null);
+  const [draggedOptionIdx, setDraggedOptionIdx] = useState<number | null>(null);
+
   // Modular Modes Storage
   const [modes, setModes] = useState<Record<string, ModeDetail>>(() => {
     try {
@@ -680,21 +1231,21 @@ export default function App() {
         const saved = localStorage.getItem('fm_modes');
         if (saved) {
           const parsed = JSON.parse(saved);
-          // Ensure accurate merge with initial fields
-          const mergedObj = { ...DEFAULT_MODES };
-          Object.keys(parsed).forEach((k) => {
-            if (mergedObj[k]) {
-              if (typeof parsed[k].title === 'string' && parsed[k].title.length > 0) {
-                mergedObj[k].title = parsed[k].title;
-              }
-              if (Array.isArray(parsed[k].options) && parsed[k].options.length > 0) {
-                mergedObj[k].options = parsed[k].options;
-              }
-              if (parsed[k].accent) mergedObj[k].accent = parsed[k].accent;
-              if (parsed[k].soft) mergedObj[k].soft = parsed[k].soft;
-            }
-          });
-          return mergedObj;
+          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+            const mergedObj: Record<string, ModeDetail> = {};
+            Object.keys(parsed).forEach((k) => {
+              const def = DEFAULT_MODES[k];
+              mergedObj[k] = {
+                title: parsed[k]?.title || def?.title || k,
+                accent: parsed[k]?.accent || def?.accent || 'rgba(30, 140, 255, 0.9)',
+                soft: parsed[k]?.soft || def?.soft || 'rgba(60, 170, 255, 0.18)',
+                defaultAccent: parsed[k]?.defaultAccent || def?.defaultAccent || 'rgba(30, 140, 255, 0.9)',
+                defaultSoft: parsed[k]?.defaultSoft || def?.defaultSoft || 'rgba(60, 170, 255, 0.18)',
+                options: Array.isArray(parsed[k]?.options) && parsed[k].options.length > 0 ? parsed[k].options : (def?.options || []),
+              };
+            });
+            if (Object.keys(mergedObj).length > 0) return mergedObj;
+          }
         }
       }
     } catch (e) {}
@@ -739,6 +1290,18 @@ export default function App() {
     };
   });
 
+  // Custom uploaded icons state
+  const iconFileInputRef = useRef<HTMLInputElement>(null);
+  const [customIcons, setCustomIcons] = useState<Record<string, { label: string; src: string; format: 'svg' | 'png' }>>(() => {
+    try {
+      const saved = localStorage.getItem('fm_custom_icons');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return {};
+  });
+
   // Scale tracking (from localStorage)
   const [scale, setScale] = useState<number>(() => {
     try {
@@ -761,6 +1324,18 @@ export default function App() {
   const [titleInputValue, setTitleInputValue] = useState<string>('');
   const [editingItemIdx, setEditingItemIdx] = useState<number | null>(null);
   const [editingItemValue, setEditingItemValue] = useState<string>('');
+
+  // Mode completion water splash state
+  const [completedSplashMode, setCompletedSplashMode] = useState<string | null>(null);
+  const splashTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerCompletedSplash = (modeKey: string) => {
+    if (splashTimerRef.current) clearTimeout(splashTimerRef.current);
+    setCompletedSplashMode(modeKey);
+    splashTimerRef.current = setTimeout(() => {
+      setCompletedSplashMode(null);
+    }, 3000);
+  };
 
   // Auto Updater State
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
@@ -818,6 +1393,8 @@ export default function App() {
         curr.closest('button') ||
         curr.closest('input') ||
         curr.closest('.icon-btn') ||
+        curr.closest('.icon-wrap') ||
+        curr.closest('.mode-drag-handle') ||
         curr.closest('.edit-toggle') ||
         curr.closest('.settings-toggle') ||
         curr.closest('#settings-panel') ||
@@ -842,6 +1419,66 @@ export default function App() {
       curr = curr.parentElement;
     }
     return true;
+  };
+
+  const handleModePointerDown = (e: React.PointerEvent, mKey: string, mIdx: number) => {
+    if (!editMode) return;
+    if (e.button !== 0) return;
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    isDraggingModeRef.current = false;
+
+    setModeDragState({
+      activeKey: mKey,
+      fromIdx: mIdx,
+      currentIdx: mIdx,
+      startX,
+      currentX: startX,
+    });
+
+    const modeKeys = Object.keys(modes);
+    const totalCount = modeKeys.length;
+    const itemWidth = 58; // 50px icon width + 8px gap
+
+    const onPointerMove = (moveEv: PointerEvent) => {
+      const deltaX = moveEv.clientX - startX;
+      if (Math.abs(deltaX) > 4) {
+        isDraggingModeRef.current = true;
+      }
+
+      const rawStep = Math.round(deltaX / itemWidth);
+      const targetIdx = Math.max(0, Math.min(totalCount - 1, mIdx + rawStep));
+
+      setModeDragState({
+        activeKey: mKey,
+        fromIdx: mIdx,
+        currentIdx: targetIdx,
+        startX,
+        currentX: moveEv.clientX,
+      });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      setModeDragState((prev) => {
+        if (prev && prev.currentIdx !== prev.fromIdx) {
+          moveMode(prev.fromIdx, prev.currentIdx);
+        }
+        return null;
+      });
+
+      setTimeout(() => {
+        isDraggingModeRef.current = false;
+      }, 100);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
 
   const handleCardPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -1040,6 +1677,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('fm_icons', JSON.stringify(iconAssignments));
   }, [iconAssignments]);
+
+  useEffect(() => {
+    localStorage.setItem('fm_custom_icons', JSON.stringify(customIcons));
+  }, [customIcons]);
 
   useEffect(() => {
     localStorage.setItem('fm_scale', scale.toString());
@@ -1299,8 +1940,9 @@ export default function App() {
       updated = [...activeList, idx];
       playSoundChime('check');
       const totalOptionsCount = modes[currentMode].options.length;
-      if (updated.length === totalOptionsCount) {
+      if (updated.length === totalOptionsCount && totalOptionsCount > 0) {
         setTimeout(() => playSoundChime('complete'), 150);
+        triggerCompletedSplash(currentMode);
       }
     }
 
@@ -1414,6 +2056,70 @@ export default function App() {
     }, 60);
   };
 
+  // ── Re-order modes sequence ──
+  const moveMode = (fromIdx: number, toIdx: number) => {
+    const keys = Object.keys(modes);
+    if (fromIdx < 0 || fromIdx >= keys.length || toIdx < 0 || toIdx >= keys.length || fromIdx === toIdx) return;
+
+    const newKeys = [...keys];
+    const [movedKey] = newKeys.splice(fromIdx, 1);
+    newKeys.splice(toIdx, 0, movedKey);
+
+    const updatedModes: Record<string, ModeDetail> = {};
+    newKeys.forEach((k) => {
+      updatedModes[k] = modes[k];
+    });
+
+    setModes(updatedModes);
+    localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+    localStorage.setItem('fm_state_ver', '4.0');
+  };
+
+  // ── Re-order checklist options within active mode ──
+  const moveOption = (fromIdx: number, toIdx: number) => {
+    if (!currentMode || !modes[currentMode]) return;
+    const oldOptions = [...modes[currentMode].options];
+    if (fromIdx < 0 || fromIdx >= oldOptions.length || toIdx < 0 || toIdx >= oldOptions.length || fromIdx === toIdx) return;
+
+    const newOptions = [...oldOptions];
+    const [movedItem] = newOptions.splice(fromIdx, 1);
+    newOptions.splice(toIdx, 0, movedItem);
+
+    const updatedModes = {
+      ...modes,
+      [currentMode]: {
+        ...modes[currentMode],
+        options: newOptions,
+      },
+    };
+    setModes(updatedModes);
+    localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+    localStorage.setItem('fm_state_ver', '4.0');
+
+    // Remap selections array for current mode so checked state stays with item text
+    const oldSel = selections[currentMode] || [];
+    const newSel: number[] = [];
+
+    oldSel.forEach((idx) => {
+      if (idx === fromIdx) {
+        newSel.push(toIdx);
+      } else if (fromIdx < toIdx && idx > fromIdx && idx <= toIdx) {
+        newSel.push(idx - 1);
+      } else if (fromIdx > toIdx && idx >= toIdx && idx < fromIdx) {
+        newSel.push(idx + 1);
+      } else {
+        newSel.push(idx);
+      }
+    });
+
+    const updatedSelections = {
+      ...selections,
+      [currentMode]: newSel,
+    };
+    setSelections(updatedSelections);
+    localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(newSel));
+  };
+
   // ── Mode customized color-picker operations ──
   const assignModeColor = (targetMode: string, accent: string, soft: string) => {
     setModes((prev) => ({
@@ -1438,6 +2144,127 @@ export default function App() {
     }));
     setPickerOpen(false);
     setPickerTargetMode(null);
+  };
+
+  // Custom Icon File Upload Handler
+  const handleCustomIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
+    const labelName = file.name.replace(/\.[^/.]+$/, '').slice(0, 10) || 'Custom';
+    const reader = new FileReader();
+
+    if (isSvg) {
+      reader.readAsText(file);
+      reader.onload = (evt) => {
+        const content = evt.target?.result as string;
+        if (content && content.includes('<svg')) {
+          const customKey = 'custom_' + Date.now();
+          setCustomIcons((prev) => ({
+            ...prev,
+            [customKey]: {
+              label: labelName,
+              src: content,
+              format: 'svg',
+            },
+          }));
+          if (pickerTargetMode) {
+            assignModeIcon(pickerTargetMode, customKey);
+          }
+          playSoundChime('check');
+        } else {
+          // Fallback to Data URL
+          const urlReader = new FileReader();
+          urlReader.readAsDataURL(file);
+          urlReader.onload = (dataEvt) => {
+            const dataUrl = dataEvt.target?.result as string;
+            if (dataUrl) {
+              const customKey = 'custom_' + Date.now();
+              setCustomIcons((prev) => ({
+                ...prev,
+                [customKey]: {
+                  label: labelName,
+                  src: dataUrl,
+                  format: 'png',
+                },
+              }));
+              if (pickerTargetMode) {
+                assignModeIcon(pickerTargetMode, customKey);
+              }
+              playSoundChime('check');
+            }
+          };
+        }
+      };
+    } else {
+      reader.readAsDataURL(file);
+      reader.onload = (evt) => {
+        const dataUrl = evt.target?.result as string;
+        if (dataUrl) {
+          const customKey = 'custom_' + Date.now();
+          setCustomIcons((prev) => ({
+            ...prev,
+            [customKey]: {
+              label: labelName,
+              src: dataUrl,
+              format: 'png',
+            },
+          }));
+          if (pickerTargetMode) {
+            assignModeIcon(pickerTargetMode, customKey);
+          }
+          playSoundChime('check');
+        }
+      };
+    }
+
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  const deleteCustomIcon = (e: React.MouseEvent, customKey: string) => {
+    e.stopPropagation();
+    setCustomIcons((prev) => {
+      const updated = { ...prev };
+      delete updated[customKey];
+      return updated;
+    });
+    setIconAssignments((prev) => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach((mKey) => {
+        if (updated[mKey] === customKey) {
+          updated[mKey] = mKey === 'business' ? 'briefcase' : 'home';
+        }
+      });
+      return updated;
+    });
+    playSoundChime('reset');
+  };
+
+  // Helper renderer for built-in or custom icons
+  const renderIcon = (iconKey: string) => {
+    if (customIcons[iconKey]) {
+      const item = customIcons[iconKey];
+      if (item.format === 'svg' && item.src.trim().startsWith('<svg')) {
+        return (
+          <span
+            className="custom-svg-icon"
+            style={{ display: 'inline-flex', width: '22px', height: '22px', alignItems: 'center', justifyContent: 'center' }}
+            dangerouslySetInnerHTML={{ __html: item.src }}
+          />
+        );
+      }
+      return (
+        <img
+          src={item.src}
+          alt={item.label || 'Custom'}
+          style={{ width: '22px', height: '22px', objectFit: 'contain', display: 'block' }}
+        />
+      );
+    }
+    return ICON_LIBRARY[iconKey]?.svg || ICON_LIBRARY.briefcase?.svg || ICON_LIBRARY.home?.svg;
   };
 
   const triggerAppShutdown = () => {
@@ -1541,9 +2368,67 @@ export default function App() {
           boxShadow: !licenseActive ? 'none' : (isGripped ? `0 18px 50px 5px ${modes[currentMode]?.soft || 'var(--accent-soft)'}, 0 6px 18px rgba(0, 0, 0, 0.45)` : undefined),
           transition: isGripped ? 'transform 0s, box-shadow 0.2s ease' : 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           cursor: isGripped ? 'grabbing' : undefined,
-          minHeight: (settingsOpen && !minimized) ? '390px' : undefined,
+          minHeight: (settingsOpen && !minimized) ? '420px' : undefined,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
+        {/* Wallpaper Background Layer */}
+        {wallpaperUrl && (
+          <div
+            className="wallpaper-layer"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '28px',
+              overflow: 'hidden',
+              opacity: wallpaperOpacity / 100,
+              zIndex: 0,
+              pointerEvents: 'none',
+              transition: 'opacity 0.25s ease',
+            }}
+          >
+            {isVideoUrl(wallpaperUrl) ? (
+              <>
+                <video
+                  src={wallpaperUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    position: 'absolute',
+                    inset: 0,
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: isLight
+                      ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.58) 100%)'
+                      : 'linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 100%)',
+                  }}
+                />
+              </>
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundImage: `linear-gradient(180deg, ${isLight ? 'rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.58) 100%' : 'rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 100%'}), url("${wallpaperUrl}")`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                }}
+              />
+            )}
+          </div>
+        )}
+
         {!licenseActive ? (
           <div className="license-card-inner" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', boxSizing: 'border-box', padding: '16px 8px' }}>
             <img 
@@ -1737,81 +2622,181 @@ export default function App() {
         ) : (
           <>
             {/* Tab mode selection icons row */}
-            <div className="icons">
-          {Object.keys(modes).map((mKey) => {
-            const hasLiquidFill = selections[mKey]?.length > 0;
-            const isSelected = mKey === currentMode;
-            const waveParams = compileLiquidWaveData(mKey);
+            <div
+              className="icons"
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '8px',
+                alignItems: 'center',
+                marginBottom: '16px',
+                flexShrink: 0,
+                width: '100%',
+                position: 'relative',
+                zIndex: 5,
+                padding: 0,
+                margin: 0,
+              }}
+            >
+              {Object.keys(modes).map((mKey, mIdx) => {
+                const hasLiquidFill = selections[mKey]?.length > 0;
+                const isSelected = mKey === currentMode;
+                const waveParams = compileLiquidWaveData(mKey);
+                const modeAccent = modes[mKey]?.accent || 'var(--accent)';
 
-            return (
-              <div className="icon-wrap" key={mKey}>
-                <Glass
-                  isLight={isLight}
-                  borderRadius={25}
-                  width={50}
-                  height={50}
-                  variant={isSelected ? "default" : "subtle"}
-                  backgroundOpacity={isSelected ? (isLight ? 0.35 : 0.18) : (isLight ? 0.15 : 0.08)}
-                  style={{
-                    borderRadius: '50%',
-                    boxShadow: isSelected 
-                      ? `0 0 16px ${modes[mKey]?.soft || 'var(--accent-soft)'}${isLight ? ', 0 2px 8px rgba(0, 0, 0, 0.12), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95)' : ''}` 
-                      : (isLight ? '0 2px 6px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px rgba(255, 255, 255, 0.85)' : 'none'),
-                    position: 'relative',
-                  }}
-                >
-                  {hasLiquidFill && (
-                    <div className="liquid-container">
-                      <svg viewBox="0 0 50 50">
-                        <defs>
-                          <clipPath id={`lc-clip-${mKey}`}>
-                            <circle cx="25" cy="25" r="24.5" />
-                          </clipPath>
-                          <linearGradient id={`lc-grad-${mKey}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={waveParams.gradientHigh} />
-                            <stop offset="100%" stopColor={waveParams.baseColor} />
-                          </linearGradient>
-                        </defs>
-                        <g clipPath={`url(#lc-clip-${mKey})`}>
-                          {/* Underlay color rectangle */}
-                          <rect x="-15" y={waveParams.waterY} width="80" height={52 - waveParams.waterY} fill={waveParams.baseColor} />
-                          {/* Floating wave overlay using CSS math slosh animation */}
-                          <g style={{ animation: 'liquidBob 3.2s ease-in-out infinite' }}>
-                            <path
-                              style={{
-                                animation: 'liquidSlosh 3.8s ease-in-out infinite',
-                                transformOrigin: 'center center',
-                              }}
-                              d={waveParams.wavePath}
-                              fill={`url(#lc-grad-${mKey})`}
-                            />
-                          </g>
-                        </g>
-                      </svg>
-                    </div>
-                  )}
-                  <button
-                    className={`icon-btn ${isSelected ? 'active' : ''} ${hasLiquidFill ? 'has-liquid' : ''}`}
-                    data-mode={mKey}
-                    onClick={() => handleModeIconClick(mKey)}
+                let translateX = 0;
+                let isBeingDragged = false;
+
+                if (modeDragState) {
+                  if (modeDragState.activeKey === mKey) {
+                    isBeingDragged = true;
+                    translateX = modeDragState.currentX - modeDragState.startX;
+                  } else {
+                    const from = modeDragState.fromIdx;
+                    const current = modeDragState.currentIdx;
+                    if (mIdx > from && mIdx <= current) {
+                      translateX = -58;
+                    } else if (mIdx < from && mIdx >= current) {
+                      translateX = 58;
+                    }
+                  }
+                }
+
+                return (
+                  <div
+                    key={mKey}
+                    className={`icon-wrap ${completedSplashMode === mKey ? 'splash-active' : ''} ${isSelected ? 'active-mode' : 'inactive-mode'}`}
                     style={{
-                      backgroundColor: !hasLiquidFill
-                        ? (isSelected ? (modes[mKey]?.accent || 'var(--accent)') : 'transparent')
-                        : 'transparent',
-                      border: 'none',
-                      boxShadow: 'none',
-                      width: '100%',
-                      height: '100%',
-                      transform: 'none',
-                    }}
+                      '--splash-color': modeAccent,
+                      position: 'relative',
+                      zIndex: isBeingDragged ? 20 : (isSelected ? 6 : 5),
+                      cursor: editMode ? 'grab' : 'pointer',
+                      opacity: 1,
+                      transform: `translateX(${translateX}px)`,
+                      transition: isBeingDragged ? 'none' : 'transform 0.22s cubic-bezier(0.2, 0, 0, 1)',
+                      userSelect: 'none',
+                      touchAction: 'none',
+                    } as React.CSSProperties}
+                    onPointerDown={(e) => handleModePointerDown(e, mKey, mIdx)}
                   >
-                    {ICON_LIBRARY[iconAssignments[mKey]]?.svg || ICON_LIBRARY.briefcase?.svg || ICON_LIBRARY.home?.svg}
-                  </button>
-                </Glass>
-              </div>
-            );
-          })}
-        </div>
+                    {/* Re-order Mode Drag Handle in Edit Mode (Grip Dots Only) */}
+                    {editMode && (
+                      <div
+                        className="mode-drag-handle"
+                        title="Drag to reorder mode"
+                        style={{
+                          position: 'absolute',
+                          top: '-11px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: isLight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(15, 23, 42, 0.96)',
+                          backdropFilter: 'blur(8px)',
+                          borderRadius: '999px',
+                          padding: '3px 7px',
+                          zIndex: 12,
+                          border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.25)'),
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          color: isLight ? '#0f172a' : '#ffffff',
+                          cursor: 'grab',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                          <circle cx="9" cy="6" r="1.5" />
+                          <circle cx="15" cy="6" r="1.5" />
+                          <circle cx="9" cy="12" r="1.5" />
+                          <circle cx="15" cy="12" r="1.5" />
+                          <circle cx="9" cy="18" r="1.5" />
+                          <circle cx="15" cy="18" r="1.5" />
+                        </svg>
+                      </div>
+                    )}
+                    <Glass
+                      isLight={isLight}
+                      className="mode-icon-glass"
+                      borderRadius={25}
+                      width={50}
+                      height={50}
+                      variant={isSelected ? "default" : "subtle"}
+                      backgroundOpacity={isSelected ? (isLight ? 0.35 : 0.18) : (isLight ? 0.15 : 0.08)}
+                      style={{
+                        borderRadius: '50%',
+                        transform: 'scale(1.0)',
+                        transition: 'box-shadow 0.25s ease, transform 0.25s ease',
+                        boxShadow: isSelected 
+                          ? `0 0 0 2px ${modeAccent}` 
+                          : '0 0 0 0px transparent',
+                        position: 'relative',
+                      }}
+                    >
+                      {hasLiquidFill && (
+                        <div className="liquid-container">
+                          <svg viewBox="0 0 50 50">
+                            <defs>
+                              <clipPath id={`lc-clip-${mKey}`}>
+                                <circle cx="25" cy="25" r="24.5" />
+                              </clipPath>
+                              <linearGradient id={`lc-grad-${mKey}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={waveParams.gradientHigh} />
+                                <stop offset="100%" stopColor={waveParams.baseColor} />
+                              </linearGradient>
+                            </defs>
+                            <g clipPath={`url(#lc-clip-${mKey})`}>
+                              {/* Underlay color rectangle */}
+                              <rect x="-15" y={waveParams.waterY} width="80" height={52 - waveParams.waterY} fill={waveParams.baseColor} />
+                              {/* Floating wave overlay using CSS math slosh animation */}
+                              <g style={{ animation: 'liquidBob 3.2s ease-in-out infinite' }}>
+                                <path
+                                  style={{
+                                    animation: 'liquidSlosh 3.8s ease-in-out infinite',
+                                    transformOrigin: 'center center',
+                                  }}
+                                  d={waveParams.wavePath}
+                                  fill={`url(#lc-grad-${mKey})`}
+                                />
+                              </g>
+                            </g>
+                          </svg>
+                        </div>
+                      )}
+                      {completedSplashMode === mKey && (
+                        <div className="icon-splash-droplets">
+                          <span className="i-drop d1" style={{ backgroundColor: waveParams.gradientHigh }} />
+                          <span className="i-drop d2" style={{ backgroundColor: '#ffffff' }} />
+                          <span className="i-drop d3" style={{ backgroundColor: waveParams.gradientHigh }} />
+                          <span className="i-drop d4" style={{ backgroundColor: '#ffffff' }} />
+                          <span className="i-drop d5" style={{ backgroundColor: waveParams.gradientHigh }} />
+                        </div>
+                      )}
+                      <button
+                        className={`icon-btn ${isSelected ? 'active' : ''} ${hasLiquidFill ? 'has-liquid' : ''}`}
+                        data-mode={mKey}
+                        onClick={() => {
+                          if (!isDraggingModeRef.current) {
+                            handleModeIconClick(mKey);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: !hasLiquidFill
+                            ? (isSelected ? (modes[mKey]?.accent || 'var(--accent)') : 'transparent')
+                            : 'transparent',
+                          border: 'none',
+                          boxShadow: 'none',
+                          width: '100%',
+                          height: '100%',
+                          transform: 'none',
+                        }}
+                      >
+                        {renderIcon(iconAssignments[mKey])}
+                      </button>
+                    </Glass>
+                  </div>
+                );
+              })}
+            </div>
 
         {/* Tab Mode configuration Picker overlay */}
         {pickerOpen && pickerTargetMode && (
@@ -1890,13 +2875,69 @@ export default function App() {
               </div>
             </div>
 
+            {/* Hidden File Input for Custom SVG / PNG Upload */}
+            <input
+              type="file"
+              ref={iconFileInputRef}
+              accept=".svg, .png, .jpg, .jpeg, .webp, image/svg+xml, image/png"
+              onChange={handleCustomIconUpload}
+              style={{ display: 'none' }}
+            />
+
             {/* Icon grid options list selector */}
             <div className="picker-grid">
+              {/* Custom Icon Upload Tile */}
+              <div
+                className="picker-item picker-upload"
+                title="Upload custom SVG or PNG icon file"
+                onClick={(e) => {
+                  triggerGooeyParticles(e.currentTarget, modes[pickerTargetMode]?.accent);
+                  iconFileInputRef.current?.click();
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span>Upload SVG/PNG</span>
+              </div>
+
+              {/* Custom uploaded icons */}
+              {Object.entries(customIcons).map(([cKey, cDef]) => {
+                const item = cDef as { label: string; src: string; format: string };
+                return (
+                  <div
+                    className={`picker-item custom-picker-item ${iconAssignments[pickerTargetMode] === cKey ? 'current' : ''}`}
+                    key={cKey}
+                    onClick={(e) => {
+                      triggerGooeyParticles(e.currentTarget, modes[pickerTargetMode]?.accent);
+                      assignModeIcon(pickerTargetMode, cKey);
+                    }}
+                    style={{ position: 'relative' }}
+                  >
+                    <button
+                      className="picker-item-delete"
+                      title="Delete custom icon"
+                      onClick={(e) => deleteCustomIcon(e, cKey)}
+                    >
+                      ×
+                    </button>
+                    {renderIcon(cKey)}
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+
+              {/* Built-in icons */}
               {Object.entries(ICON_LIBRARY).map(([libKey, def]) => (
                 <div
                   className={`picker-item ${iconAssignments[pickerTargetMode] === libKey ? 'current' : ''}`}
                   key={libKey}
-                  onClick={() => assignModeIcon(pickerTargetMode, libKey)}
+                  onClick={(e) => {
+                    triggerGooeyParticles(e.currentTarget, modes[pickerTargetMode]?.accent);
+                    assignModeIcon(pickerTargetMode, libKey);
+                  }}
                 >
                   {def.svg}
                   <span>{def.label}</span>
@@ -1926,160 +2967,451 @@ export default function App() {
               <span className="picker-title" style={{ textAlign: 'center', fontSize: '11px', letterSpacing: '0.14em', fontWeight: 700 }}>Settings</span>
             </div>
 
-            <div className="settings-body" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px', padding: '2px 8px 10px', overflow: 'hidden', flex: 1 }}>
-              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="settings-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}>
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Window Scale</span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', width: '100%' }}>
-                  {[2, 1.5, 1.2, 1, 0.7, 0.5].map((val) => {
-                    const isSelected = Math.abs(scale - val) < 0.01;
-                    const label = val === 2 ? 'x2'
-                                : val === 1.5 ? 'x1.5'
-                                : val === 1.2 ? 'x1.2'
-                                : val === 1 ? 'x1'
-                                : val === 0.7 ? 'x0.7'
-                                : 'x0.5';
-                    return (
-                      <button
-                        key={val}
-                        onClick={() => handleScaleChange(val)}
-                        className="scale-select-btn"
-                        style={{
-                          padding: '5px 2px',
-                          borderRadius: '10px',
-                          background: isSelected ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                          border: '1px solid ' + (isSelected ? 'var(--accent)' : 'transparent'),
-                          color: isSelected ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
-                          fontWeight: '600',
-                          fontSize: '10.5px',
-                          cursor: 'pointer',
-                          transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <GooeyNav
+                  items={[
+                    { label: 'x2', onClick: () => handleScaleChange(2) },
+                    { label: 'x1.5', onClick: () => handleScaleChange(1.5) },
+                    { label: 'x1.2', onClick: () => handleScaleChange(1.2) },
+                    { label: 'x1', onClick: () => handleScaleChange(1) },
+                    { label: 'x0.7', onClick: () => handleScaleChange(0.7) },
+                    { label: 'x0.5', onClick: () => handleScaleChange(0.5) },
+                  ]}
+                  activeIndex={[2, 1.5, 1.2, 1, 0.7, 0.5].findIndex((v) => Math.abs(scale - v) < 0.01)}
+                  particleCount={12}
+                  animationTime={450}
+                />
               </div>
 
-              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid var(--divider)', paddingTop: '6px' }}>
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Countdown Display</span>
-                <div style={{ display: 'flex', gap: '5px', width: '100%' }}>
-                  <button
-                    onClick={() => handleShowCountdownChange(true)}
-                    style={{
-                      flex: 1,
-                      padding: '5px 2px',
-                      borderRadius: '10px',
-                      background: showCountdown ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                      border: '1px solid ' + (showCountdown ? 'var(--accent)' : 'transparent'),
-                      color: showCountdown ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
-                      fontWeight: '600',
-                      fontSize: '10.5px',
-                      cursor: 'pointer',
-                      transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                  >
-                    Shown
-                  </button>
-                  <button
-                    onClick={() => handleShowCountdownChange(false)}
-                    style={{
-                      flex: 1,
-                      padding: '5px 2px',
-                      borderRadius: '10px',
-                      background: !showCountdown ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                      border: '1px solid ' + (!showCountdown ? 'var(--accent)' : 'transparent'),
-                      color: !showCountdown ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
-                      fontWeight: '600',
-                      fontSize: '10.5px',
-                      cursor: 'pointer',
-                      transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                  >
-                    Hidden
-                  </button>
-                </div>
+                <GooeyNav
+                  items={[
+                    { label: 'Shown', onClick: () => handleShowCountdownChange(true) },
+                    { label: 'Hidden', onClick: () => handleShowCountdownChange(false) },
+                  ]}
+                  activeIndex={showCountdown ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
               </div>
 
-              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid var(--divider)', paddingTop: '6px' }}>
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Completion Alarm</span>
-                <div style={{ display: 'flex', gap: '5px', width: '100%' }}>
+                <GooeyNav
+                  items={[
+                    { label: 'Alarm On', onClick: () => handleAlarmEnabledChange(true) },
+                    { label: 'Alarm Off', onClick: () => handleAlarmEnabledChange(false) },
+                  ]}
+                  activeIndex={alarmEnabled ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>App Animations</span>
+                <GooeyNav
+                  items={[
+                    { label: 'Enabled', onClick: () => handleAnimationsEnabledChange(true) },
+                    { label: 'Disabled', onClick: () => handleAnimationsEnabledChange(false) },
+                  ]}
+                  activeIndex={animationsEnabled ? 0 : 1}
+                  particleCount={animationsEnabled ? 12 : 0}
+                  animationTime={450}
+                />
+              </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Minimized Text Animation</span>
+                <GooeyNav
+                  items={[
+                    { label: 'Animated', onClick: () => handleAnimateMinimizedTextChange(true) },
+                    { label: 'Static', onClick: () => handleAnimateMinimizedTextChange(false) },
+                  ]}
+                  activeIndex={animateMinimizedText ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
+              {/* Wallpaper Background Settings */}
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>
+                    Wallpaper Background
+                  </span>
+                  {wallpaperUrl && (
+                    <button
+                      onClick={() => handleWallpaperUrlChange('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ff5252',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                      title="Remove background wallpaper"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Wallpaper Gallery (Presets + Custom Uploads) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', width: '100%', maxHeight: '120px', overflowY: 'auto', paddingRight: '2px' }}>
+                  {(() => {
+                    const galleryWallpapers = [
+                      ...PRESET_WALLPAPERS.map((wp) => ({ ...wp, isCustom: false })),
+                      ...customWallpapers.map((url, idx) => ({
+                        id: `custom_wp_${idx}`,
+                        name: `Uploaded ${idx + 1}`,
+                        url,
+                        isCustom: true,
+                      })),
+                    ];
+
+                    if (wallpaperUrl && !galleryWallpapers.some((wp) => wp.url === wallpaperUrl)) {
+                      galleryWallpapers.push({
+                        id: 'active_custom_wp',
+                        name: 'Uploaded',
+                        url: wallpaperUrl,
+                        isCustom: true,
+                      });
+                    }
+
+                    return galleryWallpapers.map((wp) => {
+                      const isSelected = wallpaperUrl === wp.url;
+                      return (
+                        <div key={wp.id} style={{ position: 'relative' }}>
+                          <button
+                            onClick={() => handleWallpaperUrlChange(wp.url)}
+                            style={{
+                              position: 'relative',
+                              width: '100%',
+                              height: '52px',
+                              borderRadius: '10px',
+                              overflow: 'hidden',
+                              border: isSelected ? '2px solid var(--accent)' : '1px solid ' + (isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)'),
+                              padding: 0,
+                              cursor: 'pointer',
+                              transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                              boxShadow: isSelected ? '0 0 12px ' + (modes[currentMode]?.soft || 'rgba(0,180,255,0.4)') : 'none',
+                              display: 'block',
+                            }}
+                            title={wp.name}
+                          >
+                            {isVideoUrl(wp.url) ? (
+                              <video
+                                src={wp.url}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <img
+                                src={wp.url}
+                                alt={wp.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                referrerPolicy="no-referrer"
+                              />
+                            )}
+                            {isVideoUrl(wp.url) && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: '3px',
+                                  left: '3px',
+                                  background: 'rgba(0,0,0,0.75)',
+                                  borderRadius: '4px',
+                                  padding: '1px 4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                  zIndex: 5,
+                                }}
+                                title="Video Wallpaper"
+                              >
+                                <svg viewBox="0 0 24 24" width="7" height="7" fill="#fff">
+                                  <polygon points="5,3 19,12 5,21" />
+                                </svg>
+                                <span style={{ fontSize: '6px', color: '#fff', fontWeight: 'bold', letterSpacing: '0.04em' }}>VID</span>
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 70%)',
+                                display: 'flex',
+                                alignItems: 'flex-end',
+                                justifyContent: 'center',
+                                padding: '2px 3px',
+                              }}
+                            >
+                              <span style={{ fontSize: '7.5px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                                {wp.name}
+                              </span>
+                            </div>
+                          </button>
+
+                          {wp.isCustom && (
+                            <button
+                              onClick={(e) => handleDeleteCustomWallpaper(e, wp.url)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                background: 'rgba(235, 45, 45, 0.88)',
+                                color: '#fff',
+                                border: 'none',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                lineHeight: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                zIndex: 10,
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                              }}
+                              title="Remove uploaded wallpaper"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* Custom Wallpaper Upload Button */}
+                <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
                   <button
-                    onClick={() => handleAlarmEnabledChange(true)}
+                    onClick={() => wallpaperFileInputRef.current?.click()}
                     style={{
                       flex: 1,
-                      padding: '5px 2px',
+                      padding: '7px 8px',
                       borderRadius: '10px',
-                      background: alarmEnabled ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                      border: '1px solid ' + (alarmEnabled ? 'var(--accent)' : 'transparent'),
-                      color: alarmEnabled ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
+                      background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                      border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'),
+                      color: isLight ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.9)',
                       fontWeight: '600',
                       fontSize: '10.5px',
                       cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
                       transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
+                    title="Upload custom wallpaper image or video file (Max 3MB)"
                   >
-                    Alarm On
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    Upload Image/Video (≤3MB)
                   </button>
+                  <input
+                    ref={wallpaperFileInputRef}
+                    type="file"
+                    accept="image/*,video/*,.mp4,.webm,.ogg,.mov,.m4v,.mkv,.avi"
+                    style={{ display: 'none' }}
+                    onChange={handleCustomWallpaperUpload}
+                  />
+                </div>
+
+                {/* Wallpaper Opacity Slider */}
+                {wallpaperUrl && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px', background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)', padding: '8px 10px', borderRadius: '10px', border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '10px', color: isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                        Wallpaper Opacity
+                      </span>
+                      <span style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--accent)' }}>
+                        {wallpaperOpacity}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value={wallpaperOpacity}
+                      onChange={(e) => handleWallpaperOpacityChange(parseInt(e.target.value, 10))}
+                      style={{
+                        width: '100%',
+                        accentColor: 'var(--accent)',
+                        cursor: 'pointer',
+                        height: '4px',
+                        borderRadius: '2px',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>
+                  Checklist Data & Template
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                  <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                    <button
+                      onClick={handleExportChecklist}
+                      style={{
+                        flex: 1,
+                        padding: '6px 2px',
+                        borderRadius: '10px',
+                        background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                        border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'),
+                        color: isLight ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.9)',
+                        fontWeight: '600',
+                        fontSize: '10.5px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      title="Export current checklist as .txt file"
+                    >
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      Export .TXT
+                    </button>
+
+                    <button
+                      onClick={generateChecklistTemplate}
+                      style={{
+                        flex: 1,
+                        padding: '6px 2px',
+                        borderRadius: '10px',
+                        background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                        border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'),
+                        color: isLight ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.9)',
+                        fontWeight: '600',
+                        fontSize: '10.5px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      title="Download editable .txt template"
+                    >
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <polyline points="9 15 12 18 15 15" />
+                      </svg>
+                      Template .TXT
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() => handleAlarmEnabledChange(false)}
+                    onClick={() => importFileInputRef.current?.click()}
                     style={{
-                      flex: 1,
-                      padding: '5px 2px',
+                      width: '100%',
+                      padding: '7px 2px',
                       borderRadius: '10px',
-                      background: !alarmEnabled ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                      border: '1px solid ' + (!alarmEnabled ? 'var(--accent)' : 'transparent'),
-                      color: !alarmEnabled ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
+                      background: 'var(--accent)',
+                      border: '1px solid var(--accent)',
+                      color: '#fff',
                       fontWeight: '600',
-                      fontSize: '10.5px',
+                      fontSize: '11px',
                       cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
                       transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
+                    title="Upload and import checklist .txt file"
                   >
-                    Alarm Off
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Import Checklist (.txt)
                   </button>
+                  <input
+                    ref={importFileInputRef}
+                    type="file"
+                    accept=".txt,.json,text/plain,application/json"
+                    style={{ display: 'none' }}
+                    onChange={handleImportChecklistFile}
+                  />
+
+                  {importStatus && (
+                    <div
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: '600',
+                        textAlign: 'center',
+                        padding: '4px 6px',
+                        borderRadius: '6px',
+                        color: importStatus.type === 'success' ? '#00e676' : '#ff5252',
+                        background: importStatus.type === 'success' ? 'rgba(0, 230, 118, 0.12)' : 'rgba(255, 82, 82, 0.12)',
+                        border: '1px solid ' + (importStatus.type === 'success' ? 'rgba(0, 230, 118, 0.25)' : 'rgba(255, 82, 82, 0.25)'),
+                      }}
+                    >
+                      {importStatus.message}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid var(--divider)', paddingTop: '6px' }}>
-                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Minimized Text Animation</span>
-                <div style={{ display: 'flex', gap: '5px', width: '100%' }}>
-                  <button
-                    onClick={() => handleAnimateMinimizedTextChange(true)}
-                    style={{
-                      flex: 1,
-                      padding: '5px 2px',
-                      borderRadius: '10px',
-                      background: animateMinimizedText ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                      border: '1px solid ' + (animateMinimizedText ? 'var(--accent)' : 'transparent'),
-                      color: animateMinimizedText ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
-                      fontWeight: '600',
-                      fontSize: '10.5px',
-                      cursor: 'pointer',
-                      transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                  >
-                    Animated
-                  </button>
-                  <button
-                    onClick={() => handleAnimateMinimizedTextChange(false)}
-                    style={{
-                      flex: 1,
-                      padding: '5px 2px',
-                      borderRadius: '10px',
-                      background: !animateMinimizedText ? 'var(--accent)' : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-                      border: '1px solid ' + (!animateMinimizedText ? 'var(--accent)' : 'transparent'),
-                      color: !animateMinimizedText ? '#fff' : (isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)'),
-                      fontWeight: '600',
-                      fontSize: '10.5px',
-                      cursor: 'pointer',
-                      transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                  >
-                    Static
-                  </button>
-                </div>
+              {/* Reset App Section */}
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>
+                  Reset App & Local Data
+                </span>
+                <button
+                  onClick={handleResetAppClick}
+                  onDoubleClick={handleResetAppDoubleClick}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: resetConfirming ? 'rgba(255, 50, 50, 0.22)' : (isLight ? 'rgba(255, 50, 50, 0.08)' : 'rgba(255, 70, 70, 0.12)'),
+                    border: '1px solid ' + (resetConfirming ? 'rgba(255, 50, 50, 0.8)' : 'rgba(255, 70, 70, 0.3)'),
+                    color: resetConfirming ? '#ff3333' : '#ff5252',
+                    fontWeight: '700',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  title="Double click to reset all app settings and data back to factory defaults"
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                  {resetConfirming ? '⚠️ Click again or Double-Click to Reset' : 'Double-Click to Reset App'}
+                </button>
               </div>
             </div>
           </div>
@@ -2256,7 +3588,7 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'var(--accent)',
+                      color: isLight ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)',
                       opacity: 0.9,
                       transition: 'opacity 0.15s',
                     }}
@@ -2303,11 +3635,11 @@ export default function App() {
                   gap: '8px',
                   fontSize: '11px',
                   fontWeight: '600',
-                  color: isTimerRunning ? 'var(--accent)' : 'var(--text-dim)',
-                  background: isTimerRunning ? 'var(--accent-soft)' : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)'),
+                  color: isLight ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)',
+                  background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
                   padding: '3px 8px',
                   borderRadius: '999px',
-                  border: '1px solid ' + (isTimerRunning ? 'var(--accent)' : 'transparent'),
+                  border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'),
                   userSelect: 'none',
                   transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
                   cursor: 'pointer',
@@ -2443,6 +3775,17 @@ export default function App() {
                     startEditingTitle();
                   }
                 }}
+                style={{
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  maxHeight: '90px',
+                  lineHeight: '1.28',
+                  paddingBottom: '6px',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'visible',
+                }}
               >
                 {modes[currentMode]?.title || 'Precision'}
               </h1>
@@ -2493,9 +3836,62 @@ export default function App() {
               {modes[currentMode]?.options.map((itemText, optionIdx) => {
                 const isItemChecked = (selections[currentMode] || []).includes(optionIdx);
                 const isEditingItem = editingItemIdx === optionIdx;
+                const totalOptionsCount = modes[currentMode]?.options.length || 0;
 
                 return (
-                  <li className={`option ${isItemChecked ? 'selected' : ''}`} key={optionIdx} onClick={() => handleOptionToggle(optionIdx)}>
+                  <li
+                    className={`option ${isItemChecked ? 'selected' : ''} ${draggedOptionIdx === optionIdx ? 'dragging-option' : ''}`}
+                    key={optionIdx}
+                    onClick={() => handleOptionToggle(optionIdx)}
+                    draggable={editMode}
+                    onDragStart={(e) => {
+                      if (!editMode) return;
+                      setDraggedOptionIdx(optionIdx);
+                      e.dataTransfer.setData('text/plain', String(optionIdx));
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(e) => {
+                      if (!editMode) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      if (!editMode) return;
+                      e.preventDefault();
+                      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                      if (!isNaN(fromIdx) && fromIdx !== optionIdx) {
+                        moveOption(fromIdx, optionIdx);
+                      }
+                      setDraggedOptionIdx(null);
+                    }}
+                    onDragEnd={() => setDraggedOptionIdx(null)}
+                    style={{ cursor: editMode ? 'grab' : 'pointer' }}
+                  >
+                    {/* Drag handle icon in edit mode */}
+                    {editMode && (
+                      <span
+                        className="drag-handle-icon"
+                        title="Drag or use arrows to reorder item"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: isLight ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)',
+                          cursor: 'grab',
+                          marginRight: '2px',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                          <circle cx="9" cy="6" r="1.5" />
+                          <circle cx="15" cy="6" r="1.5" />
+                          <circle cx="9" cy="12" r="1.5" />
+                          <circle cx="15" cy="12" r="1.5" />
+                          <circle cx="9" cy="18" r="1.5" />
+                          <circle cx="15" cy="18" r="1.5" />
+                        </svg>
+                      </span>
+                    )}
+
                     {/* Tick box checkbox circle */}
                     <span className="check-box">
                       <svg viewBox="0 0 16 16">
@@ -2521,11 +3917,71 @@ export default function App() {
                       <span className="opt-text">{itemText}</span>
                     )}
 
-                    {/* Action delete toggle */}
+                    {/* Action reorder & delete buttons in edit mode */}
                     {editMode && (
-                      <button className="del-btn animate-fade-in" style={{ display: 'flex' }} onClick={(e) => deleteItemOption(e, optionIdx)}>
-                        ×
-                      </button>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          marginLeft: 'auto',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          className="reorder-item-btn"
+                          disabled={optionIdx === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveOption(optionIdx, optionIdx - 1);
+                          }}
+                          style={{
+                            background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+                            border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'),
+                            color: isLight ? '#0f172a' : '#ffffff',
+                            opacity: optionIdx === 0 ? 0.25 : 0.85,
+                            cursor: optionIdx === 0 ? 'default' : 'pointer',
+                            padding: '2px 5px',
+                            borderRadius: '5px',
+                            fontSize: '9px',
+                            lineHeight: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title="Move item up"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          className="reorder-item-btn"
+                          disabled={optionIdx === totalOptionsCount - 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveOption(optionIdx, optionIdx + 1);
+                          }}
+                          style={{
+                            background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+                            border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'),
+                            color: isLight ? '#0f172a' : '#ffffff',
+                            opacity: optionIdx === totalOptionsCount - 1 ? 0.25 : 0.85,
+                            cursor: optionIdx === totalOptionsCount - 1 ? 'default' : 'pointer',
+                            padding: '2px 5px',
+                            borderRadius: '5px',
+                            fontSize: '9px',
+                            lineHeight: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title="Move item down"
+                        >
+                          ▼
+                        </button>
+                        <button className="del-btn animate-fade-in" style={{ display: 'flex' }} onClick={(e) => deleteItemOption(e, optionIdx)} title="Delete option">
+                          ×
+                        </button>
+                      </div>
                     )}
                   </li>
                 );
