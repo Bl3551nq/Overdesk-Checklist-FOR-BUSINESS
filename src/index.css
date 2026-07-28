@@ -59,8 +59,13 @@ body.electron .theme-switch, body.electron .minimize-pill, body.electron .minimi
 body.electron .resize-handle, body.electron .reset-wrap, body.electron .color-swatch, 
 body.electron .color-custom-wrap, body.electron .title-wrap, body.electron .title, 
 body.electron .title-container-editable, body.electron .edit-title-btn,
-body.electron .title-input, body.electron .mode-label, body.electron a, body.electron select, body.electron .picker-grid {
-  -webkit-app-region: no-drag;
+body.electron .title-input, body.electron .mode-label, body.electron a, body.electron select, body.electron .picker-grid,
+body.electron .icon-picker, body.electron #settings-panel, body.electron .settings-body, body.electron .setting-section,
+body.electron .no-drag,
+body.electron input[type="range"],
+body.electron input[type="range"]::-webkit-slider-thumb,
+body.electron input[type="range"]::-webkit-slider-runnable-track {
+  -webkit-app-region: no-drag !important;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1506,52 +1511,85 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
    LICENSE GUMROAD VALIDATION SCREEN
 ═══════════════════════════════════════════════════════ */
 .card.license-mode {
-  box-shadow: none !important;
-  text-shadow: none !important;
-  filter: none !important;
+  padding: 12px !important;
 }
-.card.license-mode * {
-  box-shadow: none !important;
-  text-shadow: none !important;
-  filter: none !important;
+.license-card-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  padding: 22px 18px;
+  border-radius: 20px;
+  background: rgba(12, 16, 26, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  position: relative;
+}
+.card.light .license-card-inner {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
 }
 .license-logo {
   width: 88px;
   height: 88px;
   object-fit: contain;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .license-title {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: #ffffff;
   letter-spacing: 0.01em;
 }
+.card.light .license-title {
+  color: #0f172a;
+}
 .license-sub {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.88);
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.45;
+  font-weight: 500;
+}
+.card.light .license-sub {
+  color: rgba(15, 23, 42, 0.8);
 }
 .license-input {
   width: 100%;
-  padding: 11px 14px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 12px;
-  color: #fff;
-  font-size: 14px;
+  color: #ffffff;
+  font-size: 13.5px;
   font-family: monospace;
   letter-spacing: 0.08em;
   text-align: center;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
+}
+.license-input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+.card.light .license-input {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  color: #0f172a;
+}
+.card.light .license-input::placeholder {
+  color: rgba(15, 23, 42, 0.45);
 }
 .license-input:focus {
-  border-color: rgba(150, 80, 255, 0.6);
+  border-color: #00ccff;
 }
 .license-input.error {
-  border-color: rgba(255, 60, 60, 0.7);
+  border-color: #ff4d4d;
   animation: shake 0.3s ease;
 }
 @keyframes shake {
@@ -1563,21 +1601,35 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
   width: 100%;
   padding: 12px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(110, 0, 210, 0.9), rgba(180, 30, 80, 0.9));
-  color: #fff;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.12s;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
 }
 .license-btn:hover {
-  opacity: 0.85;
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 .license-hint {
-  font-size: 10px;
-  color: rgba(255,255,255,0.25);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
   text-align: center;
+  margin-top: 8px;
+}
+.card.light .license-hint {
+  color: rgba(15, 23, 42, 0.85);
+}
+.license-hint a {
+  color: #38bdf8 !important;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.card.light .license-hint a {
+  color: #0284c7 !important;
 }
 
 /* Mode Icon Completion Glow disabled (bubble animation is preserved) */

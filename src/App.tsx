@@ -809,22 +809,35 @@ export default function App() {
 
   const generateChecklistTemplate = () => {
     try {
-      const templateTxt = `[Work & Projects]
-- Review daily goals & priorities
-- Check priority emails and messages
-- Complete deep focus work session
-- Wrap up daily progress summary
+      const templateTxt = `[Work & Office]
+- Review client proposals
+- Team sync & project status
+- Approve pending invoices
+- Quarterly goal check-in
 
-[Health & Fitness]
-- Drink morning glass of water
-- 30 min exercise or walk
-- Prepare healthy meals
-- Evening wind-down routine
+[Everyday Life]
+- Morning coffee & planning
+- Grocery list & errands
+- 30 min workout or walk
+- Evening downtime & book
 
-[Personal & Home]
-- Tidy up workstation desk
-- Read 15 pages of a book
-- Plan upcoming schedule
+[PC & Workstation]
+- Clean desktop & downloads
+- System & security updates
+- Backup important files
+- Organize workspace tabs
+
+[Focus & DND]
+- Deep work block
+- Mute phone & chat alerts
+- Close distraction tabs
+- Single-task until finished
+
+[Daily Schedule]
+- Check today's calendar
+- Review top 3 priorities
+- Follow up on key emails
+- End-of-day summary
 `;
 
       const dataStr = 'data:text/plain;charset=utf-8,' + encodeURIComponent(templateTxt.trim());
@@ -835,7 +848,7 @@ export default function App() {
       downloadAnchor.click();
       downloadAnchor.remove();
 
-      setImportStatus({ type: 'success', message: 'Template (.txt) downloaded! Edit & import anytime.' });
+      setImportStatus({ type: 'success', message: 'Standard 5-mode template downloaded! Edit & import anytime.' });
       setTimeout(() => setImportStatus(null), 3500);
     } catch (err) {
       setImportStatus({ type: 'error', message: 'Failed to download template.' });
@@ -1004,40 +1017,23 @@ export default function App() {
           }
         }
 
-        if (itemsToProcess.length === 0) {
-          setImportStatus({ type: 'error', message: 'No valid mode headings or items found in file.' });
+        // Strict 5 mode requirement check
+        if (itemsToProcess.length !== 5) {
+          setImportStatus({
+            type: 'error',
+            message: `Import failed: Standard 5 modes required (found ${itemsToProcess.length}). Files with fewer or more modes cannot be imported.`,
+          });
           return;
         }
 
-        const existingKeys = Object.keys(modes);
+        const standardKeys = ['work', 'life', 'pc', 'sync', 'alerts'];
         const importedModes: Record<string, ModeDetail> = {};
         const importedSelections: Record<string, number[]> = {};
         const importedIcons: Record<string, string> = { ...iconAssignments };
 
         itemsToProcess.forEach((item, index) => {
-          // Find matching existing mode key by exact ID, title match, or position index
-          let matchedKey: string | null = null;
-          if (modes[item.id]) {
-            matchedKey = item.id;
-          } else {
-            const foundKey = existingKeys.find(
-              (k) => modes[k] && modes[k].title.trim().toLowerCase() === item.heading.trim().toLowerCase()
-            );
-            if (foundKey) {
-              matchedKey = foundKey;
-            } else if (existingKeys[index] && modes[existingKeys[index]]) {
-              matchedKey = existingKeys[index];
-            }
-          }
-
-          let mKey = item.id;
-          if (matchedKey && !importedModes[matchedKey]) {
-            mKey = matchedKey;
-          } else if (!mKey || importedModes[mKey]) {
-            mKey = `custom_mode_${index + 1}`;
-          }
-
-          const existingModeData = (matchedKey && modes[matchedKey]) || modes[mKey];
+          const mKey = standardKeys[index] || `mode_${index + 1}`;
+          const existingModeData = modes[mKey];
           const defaultAccentList = [
             'rgba(30, 140, 255, 0.9)',
             'rgba(0, 190, 80, 0.9)',
@@ -1052,6 +1048,7 @@ export default function App() {
             'rgba(255, 40, 100, 0.16)',
             'rgba(255, 140, 0, 0.18)',
           ];
+          const defaultIcons = ['briefcase', 'home', 'laptop', 'shield', 'calendar'];
 
           const accent = item.accent || existingModeData?.accent || defaultAccentList[index % defaultAccentList.length];
           const soft = item.soft || existingModeData?.soft || defaultSoftList[index % defaultSoftList.length];
@@ -1067,14 +1064,11 @@ export default function App() {
 
           importedSelections[mKey] = [];
 
-          // Preserve existing icon assignments for mode
-          const existingIcon = (matchedKey && iconAssignments[matchedKey]) || iconAssignments[mKey];
           if (item.icon) {
             importedIcons[mKey] = item.icon;
-          } else if (existingIcon) {
-            importedIcons[mKey] = existingIcon;
-          } else if (!importedIcons[mKey]) {
-            const defaultIcons = ['briefcase', 'home', 'laptop', 'shield', 'calendar'];
+          } else if (iconAssignments[mKey]) {
+            importedIcons[mKey] = iconAssignments[mKey];
+          } else {
             importedIcons[mKey] = defaultIcons[index % defaultIcons.length];
           }
         });
@@ -1089,8 +1083,7 @@ export default function App() {
           localStorage.setItem('fm_sel_' + k, JSON.stringify(importedSelections[k] || []));
         });
 
-        // Set active mode to first imported mode so new checklist immediately displays on screen!
-        const firstKey = Object.keys(importedModes)[0];
+        const firstKey = standardKeys[0];
         if (firstKey) {
           setCurrentMode(firstKey);
         }
@@ -1098,7 +1091,7 @@ export default function App() {
         playSoundChime('complete');
         setImportStatus({
           type: 'success',
-          message: `Imported ${itemsToProcess.length} mode heading(s) & items successfully! ✓`,
+          message: `Imported standard 5-mode checklist successfully! ✓`,
         });
         setTimeout(() => setImportStatus(null), 4000);
       } catch (err) {
@@ -1400,6 +1393,10 @@ export default function App() {
         curr.closest('.edit-toggle') ||
         curr.closest('.settings-toggle') ||
         curr.closest('#settings-panel') ||
+        curr.closest('.icon-picker') ||
+        curr.closest('.settings-body') ||
+        curr.closest('.setting-section') ||
+        curr.closest('.wallpaper-opacity-slider') ||
         curr.closest('.countdown-timer') ||
         curr.closest('.countdown-timer-edit') ||
         curr.closest('#countdown-timer-widget') ||
@@ -1510,15 +1507,13 @@ export default function App() {
       const dy = moveEv.clientY - startY;
 
       if (!isDraggingActive) {
-        // If they move too much before the long press completes, cancel the timer
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-          if (dragPointerRef.current.timer) {
-            clearTimeout(dragPointerRef.current.timer);
-            dragPointerRef.current.timer = null;
-          }
-          cleanup();
+        if (Math.hypot(dx, dy) >= 3) {
+          isDraggingActive = true;
+          setIsGripped(true);
+          dragPointerRef.current.dragging = true;
+        } else {
+          return;
         }
-        return;
       }
 
       setTranslate({
@@ -1528,11 +1523,6 @@ export default function App() {
     };
 
     const onPointerUp = () => {
-      if (dragPointerRef.current.timer) {
-        clearTimeout(dragPointerRef.current.timer);
-        dragPointerRef.current.timer = null;
-      }
-
       if (isDraggingActive) {
         isDraggingActive = false;
         setIsGripped(false);
@@ -1551,14 +1541,6 @@ export default function App() {
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
     };
-
-    // 250ms long press trigger
-    dragPointerRef.current.timer = setTimeout(() => {
-      isDraggingActive = true;
-      setIsGripped(true);
-      dragPointerRef.current.dragging = true;
-      playSoundChime('check');
-    }, 250);
 
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerup', onPointerUp, { passive: true });
@@ -2251,7 +2233,7 @@ export default function App() {
 
   // Helper renderer for built-in or custom icons
   const renderIcon = (iconKey: string) => {
-    if (customIcons[iconKey]) {
+    if (iconKey && customIcons[iconKey]) {
       const item = customIcons[iconKey];
       if (item.format === 'svg' && item.src.trim().startsWith('<svg')) {
         return (
@@ -2270,7 +2252,10 @@ export default function App() {
         />
       );
     }
-    return ICON_LIBRARY[iconKey]?.svg || ICON_LIBRARY.briefcase?.svg || ICON_LIBRARY.home?.svg;
+    if (iconKey && ICON_LIBRARY[iconKey]?.svg) {
+      return ICON_LIBRARY[iconKey].svg;
+    }
+    return ICON_LIBRARY.briefcase?.svg || ICON_LIBRARY.home?.svg;
   };
 
   const triggerAppShutdown = () => {
@@ -2346,14 +2331,15 @@ export default function App() {
     <div
       className="app-container"
       style={{
-        width: '460px',
+        width: '350px',
         height: '100%',
         transform: `scale(${scale})`,
         transformOrigin: 'top center',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: '100px',
+        paddingTop: '8px',
+        paddingBottom: '20px',
         background: 'transparent',
         position: 'relative',
         overflow: 'visible',
@@ -2388,7 +2374,7 @@ export default function App() {
               inset: 0,
               borderRadius: '28px',
               overflow: 'hidden',
-              opacity: wallpaperOpacity / 100,
+              opacity: !licenseActive ? Math.min(wallpaperOpacity / 100, 0.12) : (wallpaperOpacity / 100),
               zIndex: 0,
               pointerEvents: 'none',
               transition: 'opacity 0.25s ease',
@@ -2436,16 +2422,16 @@ export default function App() {
         )}
 
         {!licenseActive ? (
-          <div className="license-card-inner" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', boxSizing: 'border-box', padding: '16px 8px' }}>
+          <div className="license-card-inner">
             <img 
               className="license-logo" 
               src={overdeskLogo} 
               alt="Overdesk Everyone Logo" 
-              style={{ width: '88px', height: '88px', objectFit: 'contain', marginBottom: '8px' }}
+              style={{ width: '88px', height: '88px', objectFit: 'contain', marginBottom: '2px' }}
               referrerPolicy="no-referrer"
             />
-            <div className="license-title" style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>Overdesk Everyone</div>
-            <div className="license-sub" style={{ fontSize: '11px', color: 'var(--text-mid)', textAlign: 'center', lineHeight: '1.4' }}>
+            <div className="license-title">Overdesk Everyone</div>
+            <div className="license-sub">
               Enter your license key to activate.
               <br />
               Find your license key inside your Gumroad purchase receipt.
@@ -2461,14 +2447,14 @@ export default function App() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') attemptActivation();
               }}
-              style={{ width: '100%' }}
             />
             {licenseAPIErrorText && (
               <div 
                 className="license-api-feedback"
                 style={{
-                  fontSize: '11px',
-                  color: licenseError ? '#ff4d4d' : '#00ccff',
+                  fontSize: '11.5px',
+                  fontWeight: '600',
+                  color: licenseError ? '#ff4d4d' : (isLight ? '#0284c7' : '#38bdf8'),
                   textAlign: 'center',
                   marginTop: '-4px',
                   marginBottom: '4px',
@@ -2480,13 +2466,13 @@ export default function App() {
                 {licenseAPIErrorText}
               </div>
             )}
-            <button className="license-btn" onClick={attemptActivation} style={{ width: '100%' }}>
+            <button className="license-btn" onClick={attemptActivation}>
               Activate
             </button>
             
-            <div className="license-hint" style={{ fontSize: '11px', marginTop: '12px', textAlign: 'center' }}>
-              <span style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/everyone" target="_blank" rel="noreferrer" style={{ color: '#00ccff', textDecoration: 'underline' }}>overdesk.gumroad.com/l/everyone</a>
+            <div className="license-hint">
+              <span>
+                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/everyone" target="_blank" rel="noreferrer">overdesk.gumroad.com/l/everyone</a>
               </span>
             </div>
           </div>
@@ -2955,7 +2941,12 @@ export default function App() {
 
         {/* Global Settings Panel overlay */}
         {settingsOpen && (
-          <div className="icon-picker open" id="settings-panel">
+          <div
+            className="icon-picker open no-drag"
+            id="settings-panel"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="picker-header" style={{ flexDirection: 'column', alignItems: 'center', marginBottom: '4px', gap: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
                 <button
@@ -3241,7 +3232,13 @@ export default function App() {
 
                 {/* Wallpaper Opacity Slider */}
                 {wallpaperUrl && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px', background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)', padding: '8px 10px', borderRadius: '10px', border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') }}>
+                  <div
+                    className="no-drag wallpaper-opacity-slider"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px', background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)', padding: '8px 10px', borderRadius: '10px', border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '10px', color: isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
                         Wallpaper Opacity
@@ -3252,10 +3249,14 @@ export default function App() {
                     </div>
                     <input
                       type="range"
+                      className="no-drag"
                       min="1"
                       max="100"
                       value={wallpaperOpacity}
                       onChange={(e) => handleWallpaperOpacityChange(parseInt(e.target.value, 10))}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                       style={{
                         width: '100%',
                         accentColor: 'var(--accent)',

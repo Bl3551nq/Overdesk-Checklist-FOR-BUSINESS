@@ -61,8 +61,8 @@ function createWindow() {
   cachedScale = savedScale;
   
   // Custom sizing math fitting our card size (320px width initially)
-  const initialWidth = Math.round((320 + 140) * savedScale);
-  const initialHeight = Math.round((480 + 200) * savedScale);
+  const initialWidth = Math.round((320 + 30) * savedScale);
+  const initialHeight = Math.round((480 + 28) * savedScale);
 
   const windowOptions = {
     width: initialWidth,
@@ -182,14 +182,14 @@ function createTray() {
 
   let trayIcon;
   if (fs.existsSync(iconPath)) {
-    // Windows supports 32x32 or 48x48 for High-DPI screens. macOS standard size is 16x16 with optional template styling.
+    // Windows supports High-DPI taskbar icons (44x44). macOS menu bar icon standard is 22x22. Linux is 32x32.
     if (process.platform === 'win32') {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 44, height: 44, quality: 'best' });
     } else if (process.platform === 'darwin') {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 22, height: 22, quality: 'best' });
       trayIcon.setTemplateImage(true);
     } else {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32, quality: 'best' });
     }
   } else {
     trayIcon = nativeImage.createEmpty();
@@ -515,7 +515,7 @@ ipcMain.on('set-height', (event, height) => {
     const [w] = mainWindow.getSize();
     const config = readConfig();
     const scale = config.scale || 1.0;
-    const newHeight = Math.round((height + 200) * scale);
+    const newHeight = Math.round((height + 28) * scale);
     mainWindow.setSize(w, newHeight);
   }
 });
@@ -526,9 +526,9 @@ ipcMain.on('card-bounds', (event, bounds) => {
     const config = readConfig();
     const activeScale = bounds.scale !== undefined ? bounds.scale : (config.scale || 1.0);
     
-    // Resize Electron window to leave ample transparent padding so the card's deep blurred drop shadow doesn't get clipped
-    const targetW = Math.max(100, Math.round((bounds.w + 140) * activeScale));
-    const targetH = Math.max(50, Math.round((bounds.h + 200) * activeScale));
+    // Resize Electron window to fit card with minimal transparent margin for shadow glow
+    const targetW = Math.max(100, Math.round((bounds.w + 30) * activeScale));
+    const targetH = Math.max(50, Math.round((bounds.h + 28) * activeScale));
     
     // Fetch current position and size
     const [currentX, currentY] = mainWindow.getPosition();
@@ -624,12 +624,12 @@ ipcMain.on('save-icon', (event, dataUrl) => {
     if (tray) {
       let trayImg;
       if (process.platform === 'win32') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 32, height: 32, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 44, height: 44, quality: 'best' });
       } else if (process.platform === 'darwin') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 16, height: 16, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 22, height: 22, quality: 'best' });
         trayImg.setTemplateImage(true);
       } else {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 24, height: 24, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 32, height: 32, quality: 'best' });
       }
       tray.setImage(trayImg);
     }
