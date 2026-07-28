@@ -2441,7 +2441,7 @@ export default function App() {
               className="license-logo" 
               src={overdeskLogo} 
               alt="Overdesk Everyone Logo" 
-              style={{ width: '80px', height: '100px', objectFit: 'contain', marginBottom: '16px' }}
+              style={{ width: '88px', height: '88px', objectFit: 'contain', marginBottom: '8px' }}
               referrerPolicy="no-referrer"
             />
             <div className="license-title" style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>Overdesk Everyone</div>
