@@ -763,7 +763,8 @@ body.editing .icon-btn::after {
   overflow-x: hidden;
   padding-top: 6px;
   padding-bottom: 6px;
-  padding-right: 6px;
+  padding-left: 0;
+  padding-right: 0;
   height: 176px;
   flex-shrink: 0;
   scrollbar-width: none;

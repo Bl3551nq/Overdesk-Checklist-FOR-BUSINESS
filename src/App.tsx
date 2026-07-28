@@ -545,17 +545,19 @@ const DEFAULT_MODES: Record<string, ModeDetail> = {
   },
 };
 
-// Play the high-quality Princess Bell MP3 chime repeated 5 times
+// Play the high-quality Princess Bell MP3 chime repeated 3 times with 3-second intervals
 const playModernChime = () => {
   try {
     let playCount = 0;
     const playNext = () => {
-      if (playCount >= 5) return;
+      if (playCount >= 3) return;
       const audio = new Audio("https://raw.githubusercontent.com/Bl3551nq/bell-sound/main/princess_bell.mp3");
       audio.volume = 0.8;
       audio.addEventListener('ended', () => {
         playCount++;
-        playNext();
+        if (playCount < 3) {
+          setTimeout(playNext, 3000);
+        }
       });
       audio.play().catch((err) => {
         console.warn("Audio play failed or was blocked by browser autoplay restrictions:", err);
@@ -3434,7 +3436,7 @@ export default function App() {
                   background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
                   padding: '3px 8px',
                   borderRadius: '999px',
-                  border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'),
+                  border: 'none',
                   userSelect: 'none',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -3639,7 +3641,7 @@ export default function App() {
                   background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
                   padding: '3px 8px',
                   borderRadius: '999px',
-                  border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'),
+                  border: 'none',
                   userSelect: 'none',
                   transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
                   cursor: 'pointer',
