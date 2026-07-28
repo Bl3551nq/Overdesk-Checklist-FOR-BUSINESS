@@ -1467,8 +1467,13 @@ export default function App() {
       window.removeEventListener('pointercancel', onPointerUp);
 
       setModeDragState((prev) => {
-        if (prev && prev.currentIdx !== prev.fromIdx) {
-          moveMode(prev.fromIdx, prev.currentIdx);
+        if (prev) {
+          if (prev.currentIdx !== prev.fromIdx) {
+            moveMode(prev.fromIdx, prev.currentIdx);
+          }
+          setEditingTitle(false);
+          setEditingItemIdx(null);
+          setCurrentMode(prev.activeKey);
         }
         return null;
       });
@@ -1908,14 +1913,13 @@ export default function App() {
 
   // ── Switch Active Tab Tab Modes ──
   const handleModeIconClick = (mode: string) => {
+    setEditingTitle(false);
+    setEditingItemIdx(null);
+    setCurrentMode(mode);
     if (editMode) {
       // Toggle mode visual configuration overlay
       setPickerTargetMode(mode);
       setPickerOpen(true);
-    } else {
-      setEditingTitle(false);
-      setEditingItemIdx(null);
-      setCurrentMode(mode);
     }
   };
 
@@ -2436,11 +2440,11 @@ export default function App() {
             <img 
               className="license-logo" 
               src={overdeskLogo} 
-              alt="Overdesk Checklist Logo" 
+              alt="Overdesk Everyone Logo" 
               style={{ width: '80px', height: '100px', objectFit: 'contain', marginBottom: '16px' }}
               referrerPolicy="no-referrer"
             />
-            <div className="license-title" style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>Overdesk Checklist</div>
+            <div className="license-title" style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>Overdesk Everyone</div>
             <div className="license-sub" style={{ fontSize: '11px', color: 'var(--text-mid)', textAlign: 'center', lineHeight: '1.4' }}>
               Enter your license key to activate.
               <br />
@@ -2482,7 +2486,7 @@ export default function App() {
             
             <div className="license-hint" style={{ fontSize: '11px', marginTop: '12px', textAlign: 'center' }}>
               <span style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/app3" target="_blank" rel="noreferrer" style={{ color: '#00ccff', textDecoration: 'underline' }}>overdesk.gumroad.com/l/app3</a>
+                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/everyone" target="_blank" rel="noreferrer" style={{ color: '#00ccff', textDecoration: 'underline' }}>overdesk.gumroad.com/l/everyone</a>
               </span>
             </div>
           </div>

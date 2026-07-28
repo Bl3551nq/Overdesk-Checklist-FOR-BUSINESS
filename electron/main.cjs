@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -81,12 +81,25 @@ function createWindow() {
     }
   };
 
-  // Restore saved coordinates if loaded correctly
+  // Restore saved coordinates if loaded correctly, or default to top center of screen on fresh install
   if (typeof config.x === 'number' && typeof config.y === 'number') {
     windowOptions.x = config.x;
     windowOptions.y = config.y;
     cachedX = config.x;
     cachedY = config.y;
+  } else {
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { workArea } = primaryDisplay;
+      const defaultX = Math.round(workArea.x + (workArea.width - initialWidth) / 2);
+      const defaultY = Math.round(workArea.y + 10);
+      windowOptions.x = defaultX;
+      windowOptions.y = defaultY;
+      cachedX = defaultX;
+      cachedY = defaultY;
+    } catch (e) {
+      console.error('Error fetching primary display bounds:', e);
+    }
   }
 
   // Load appropriate application icon
@@ -99,6 +112,12 @@ function createWindow() {
   }
 
   mainWindow = new BrowserWindow(windowOptions);
+
+  // Enforce high-priority always-on-top level so widget stays above all windows
+  mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+  if (process.platform === 'darwin') {
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
 
   // Load from local static build or development server
   const isDev = !app.isPackaged;
@@ -186,6 +205,7 @@ function createTray() {
             mainWindow.hide();
           } else {
             mainWindow.show();
+            mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
             mainWindow.focus();
           }
         } else {
@@ -203,7 +223,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('Overdesk Checklist');
+  tray.setToolTip('Overdesk Everyone');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
@@ -212,6 +232,7 @@ function createTray() {
         mainWindow.hide();
       } else {
         mainWindow.show();
+        mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
         mainWindow.focus();
       }
     } else {
@@ -316,7 +337,7 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
   }
 
   // Attempt to load Gumroad config from package.json dynamically so developers can override without editing code
-  let productId = 'IuGRgU5DfICDDM1w7-eY7Q==';
+  let productId = 'njBrop7enJxgaZWr4Y7-dQ==';
   let accessToken = '';
   let usePermalink = false;
 
