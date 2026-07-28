@@ -27,7 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install System Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Web Application (React/Vite)
         run: npm run build
