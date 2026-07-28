@@ -2331,15 +2331,14 @@ export default function App() {
     <div
       className="app-container"
       style={{
-        width: '350px',
+        width: '440px',
         height: '100%',
         transform: `scale(${scale})`,
         transformOrigin: 'top center',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: '8px',
-        paddingBottom: '20px',
+        padding: '30px 60px 60px 60px',
         background: 'transparent',
         position: 'relative',
         overflow: 'visible',
@@ -2357,7 +2356,7 @@ export default function App() {
         onDragStart={(e) => e.preventDefault()}
         style={{
           transform: `translate(${translate.x}px, ${translate.y}px) scale(${isGripped ? 1.035 : 1})`,
-          boxShadow: !licenseActive ? 'none' : (isGripped ? `0 18px 50px 5px ${modes[currentMode]?.soft || 'var(--accent-soft)'}, 0 6px 18px rgba(0, 0, 0, 0.45)` : undefined),
+          boxShadow: !licenseActive ? 'none' : (isGripped ? `0 20px 50px -5px ${modes[currentMode]?.soft || 'var(--accent-soft)'}, 0 8px 24px -2px rgba(0, 0, 0, 0.45)` : undefined),
           transition: isGripped ? 'transform 0s, box-shadow 0.2s ease' : 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           cursor: isGripped ? 'grabbing' : undefined,
           minHeight: (settingsOpen && !minimized) ? '420px' : undefined,
@@ -2374,7 +2373,7 @@ export default function App() {
               inset: 0,
               borderRadius: '28px',
               overflow: 'hidden',
-              opacity: !licenseActive ? Math.min(wallpaperOpacity / 100, 0.12) : (wallpaperOpacity / 100),
+              opacity: !licenseActive ? Math.min((wallpaperOpacity / 100) * 0.75, 0.6) : (wallpaperOpacity / 100),
               zIndex: 0,
               pointerEvents: 'none',
               transition: 'opacity 0.25s ease',

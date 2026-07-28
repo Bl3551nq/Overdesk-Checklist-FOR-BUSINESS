@@ -60,9 +60,9 @@ function createWindow() {
   const savedScale = config.scale || 1.0;
   cachedScale = savedScale;
   
-  // Custom sizing math fitting our card size (320px width initially)
-  const initialWidth = Math.round((320 + 30) * savedScale);
-  const initialHeight = Math.round((480 + 28) * savedScale);
+  // Custom sizing math fitting our card size with ample transparent padding for soft blurred drop-shadows
+  const initialWidth = Math.round((320 + 120) * savedScale);
+  const initialHeight = Math.round((480 + 140) * savedScale);
 
   const windowOptions = {
     width: initialWidth,
@@ -515,7 +515,7 @@ ipcMain.on('set-height', (event, height) => {
     const [w] = mainWindow.getSize();
     const config = readConfig();
     const scale = config.scale || 1.0;
-    const newHeight = Math.round((height + 28) * scale);
+    const newHeight = Math.round((height + 140) * scale);
     mainWindow.setSize(w, newHeight);
   }
 });
@@ -526,9 +526,9 @@ ipcMain.on('card-bounds', (event, bounds) => {
     const config = readConfig();
     const activeScale = bounds.scale !== undefined ? bounds.scale : (config.scale || 1.0);
     
-    // Resize Electron window to fit card with minimal transparent margin for shadow glow
-    const targetW = Math.max(100, Math.round((bounds.w + 30) * activeScale));
-    const targetH = Math.max(50, Math.round((bounds.h + 28) * activeScale));
+    // Resize Electron window to fit card with ample transparent margin for soft blurred shadow glow
+    const targetW = Math.max(100, Math.round((bounds.w + 120) * activeScale));
+    const targetH = Math.max(50, Math.round((bounds.h + 140) * activeScale));
     
     // Fetch current position and size
     const [currentX, currentY] = mainWindow.getPosition();
