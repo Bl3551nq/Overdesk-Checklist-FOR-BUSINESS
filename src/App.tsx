@@ -3760,7 +3760,17 @@ export default function App() {
             <input
               ref={titleInputRef}
               className="title-input"
-              style={{ display: 'block' }}
+              style={{
+                display: 'block',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontSize: titleInputValue.length > 22 ? '18px' : titleInputValue.length > 15 ? '21px' : '25px',
+                width: '100%',
+                flex: 1,
+                minWidth: 0,
+                boxSizing: 'border-box',
+              }}
               type="text"
               value={titleInputValue}
               onChange={(e) => setTitleInputValue(e.target.value)}
@@ -3770,31 +3780,38 @@ export default function App() {
               }}
             />
           ) : (
-            <div className={`title-container-editable ${editMode ? 'can-edit' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1
-                className={`title ${editMode ? 'editable' : ''}`}
-                id="mode-title"
-                onClick={startEditingTitle}
-                onMouseDown={(e) => {
-                  if (editMode) {
-                    e.stopPropagation();
-                    startEditingTitle();
-                  }
-                }}
-                style={{
-                  wordBreak: 'break-word',
-                  overflowWrap: 'break-word',
-                  maxHeight: '90px',
-                  lineHeight: '1.28',
-                  paddingBottom: '6px',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'visible',
-                }}
-              >
-                {modes[currentMode]?.title || 'Precision'}
-              </h1>
+            <div className={`title-container-editable ${editMode ? 'can-edit' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              {(() => {
+                const titleStr = modes[currentMode]?.title || 'Precision';
+                const dynamicFontSize = titleStr.length > 22 ? '18px' : titleStr.length > 15 ? '21px' : '25px';
+                return (
+                  <h1
+                    className={`title ${editMode ? 'editable' : ''}`}
+                    id="mode-title"
+                    onClick={startEditingTitle}
+                    onMouseDown={(e) => {
+                      if (editMode) {
+                        e.stopPropagation();
+                        startEditingTitle();
+                      }
+                    }}
+                    style={{
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '100%',
+                      lineHeight: '1.2',
+                      paddingBottom: '2px',
+                      display: 'block',
+                      fontSize: dynamicFontSize,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    {titleStr}
+                  </h1>
+                );
+              })()}
               {editMode && (
                 <button
                   className="edit-title-btn"
