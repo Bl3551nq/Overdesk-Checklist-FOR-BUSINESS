@@ -3,6 +3,7 @@ import overdeskLogo from './logo.svg';
 import { MinimizedReminderView } from './components/MinimizedReminderView';
 import { Glass } from './components/Glass';
 import GooeyNav, { triggerGooeyParticles } from './components/GooeyNav';
+import { CalendarReminderView, TaskReminder } from './components/CalendarReminderView';
 
 import wallpaperExecutiveArt from './assets/images/wallpaper_executive_art_1784998270755.jpg';
 import wallpaperCyberSkull from './assets/images/wallpaper_cyber_skull_1784998284302.jpg';
@@ -629,6 +630,15 @@ export default function App() {
     }
   });
 
+  const [autoMoveCompleted, setAutoMoveCompleted] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('fm_auto_move_completed');
+      return saved !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
   const handleShowCountdownChange = (val: boolean) => {
     setShowCountdown(val);
     localStorage.setItem('fm_show_countdown', String(val));
@@ -651,6 +661,37 @@ export default function App() {
     localStorage.setItem('fm_animate_minimized_text', String(val));
   };
 
+  const handleAutoMoveCompletedChange = (val: boolean) => {
+    setAutoMoveCompleted(val);
+    localStorage.setItem('fm_auto_move_completed', String(val));
+    if (val && currentMode && modes[currentMode]) {
+      const currentOptions = modes[currentMode].options || [];
+      const activeSel = selections[currentMode] || [];
+      if (currentOptions.length > 0 && activeSel.length > 0) {
+        const uncheckedIdxs = currentOptions.map((_, i) => i).filter((i) => !activeSel.includes(i));
+        const checkedIdxs = currentOptions.map((_, i) => i).filter((i) => activeSel.includes(i));
+        const finalOrderIdxs = [...uncheckedIdxs, ...checkedIdxs];
+
+        const newOptions = finalOrderIdxs.map((i) => currentOptions[i]);
+        const newSel = Array.from({ length: checkedIdxs.length }, (_, i) => uncheckedIdxs.length + i);
+
+        const updatedModes = {
+          ...modes,
+          [currentMode]: {
+            ...modes[currentMode],
+            options: newOptions,
+          },
+        };
+        setModes(updatedModes);
+        localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+
+        const nextSelections = { ...selections, [currentMode]: newSel };
+        setSelections(nextSelections);
+        localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(newSel));
+      }
+    }
+  };
+
   const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('fm_animations_enabled');
@@ -660,6 +701,27 @@ export default function App() {
     }
   });
 
+  const [isScrolling, setIsScrolling] = useState<boolean>(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleScrollAreaScroll = () => {
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!animationsEnabled) {
       document.body.classList.add('animations-disabled');
@@ -667,6 +729,138 @@ export default function App() {
       document.body.classList.remove('animations-disabled');
     }
   }, [animationsEnabled]);
+
+  // ── Task Reminders & Calendar State ──
+  const [taskReminders, setTaskReminders] = useState<Record<string, TaskReminder>>(() => {
+    try {
+      const saved = localStorage.getItem('fm_task_reminders');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [taskAlarmsEnabled, setTaskAlarmsEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('fm_task_alarms_enabled');
+      return saved !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [activeCalendarTask, setActiveCalendarTask] = useState<{ modeKey: string; taskText: string; taskIdx: number } | null>(null);
+  const [activeAlarmModal, setActiveAlarmModal] = useState<TaskReminder | null>(null);
+
+  const handleToggleTaskAlarmsEnabled = (val: boolean) => {
+    setTaskAlarmsEnabled(val);
+    localStorage.setItem('fm_task_alarms_enabled', String(val));
+  };
+
+  const handleSaveTaskReminder = (reminderData: Omit<TaskReminder, 'id'>) => {
+    const remKey = `${reminderData.modeKey}_${reminderData.taskIdx}`;
+    const newRem: TaskReminder = {
+      ...reminderData,
+      id: remKey,
+    };
+    const updated = {
+      ...taskReminders,
+      [remKey]: newRem,
+    };
+    setTaskReminders(updated);
+    localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
+  };
+
+  const handleDeleteTaskReminder = (taskIdx: number) => {
+    if (!activeCalendarTask) return;
+    const remKey = `${activeCalendarTask.modeKey}_${taskIdx}`;
+    const updated = { ...taskReminders };
+    delete updated[remKey];
+    setTaskReminders(updated);
+    localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
+  };
+
+  const markTaskDoneFromAlarm = (modeKey: string, taskText: string) => {
+    if (!modes[modeKey]) return;
+    const currentOptions = modes[modeKey].options || [];
+    let idx = currentOptions.findIndex((opt) => opt === taskText);
+    if (idx === -1) return;
+
+    setSelections((prevSelMap) => {
+      const activeList = prevSelMap[modeKey] || [];
+      if (activeList.includes(idx)) {
+        return prevSelMap; // Already checked
+      }
+
+      const updated = [...activeList, idx];
+      playSoundChime('check');
+
+      if (autoMoveCompleted) {
+        const uncheckedIdxs = currentOptions.map((_, i) => i).filter((i) => !updated.includes(i));
+        const checkedIdxs = currentOptions.map((_, i) => i).filter((i) => updated.includes(i));
+
+        const otherChecked = checkedIdxs.filter((i) => i !== idx);
+        const finalCheckedIdxs = [...otherChecked, idx];
+
+        const finalOrderIdxs = [...uncheckedIdxs, ...finalCheckedIdxs];
+        const newOptions = finalOrderIdxs.map((i) => currentOptions[i]);
+        const newSelIndices = Array.from({ length: finalCheckedIdxs.length }, (_, i) => uncheckedIdxs.length + i);
+
+        setModes((prevModes) => {
+          const updatedModes = {
+            ...prevModes,
+            [modeKey]: {
+              ...prevModes[modeKey],
+              options: newOptions,
+            },
+          };
+          localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+          return updatedModes;
+        });
+
+        const nextSelMap = { ...prevSelMap, [modeKey]: newSelIndices };
+        localStorage.setItem('fm_sel_' + modeKey, JSON.stringify(newSelIndices));
+        return nextSelMap;
+      } else {
+        const nextSelMap = { ...prevSelMap, [modeKey]: updated };
+        localStorage.setItem('fm_sel_' + modeKey, JSON.stringify(updated));
+        return nextSelMap;
+      }
+    });
+  };
+
+  // Alarm trigger interval checking (checks every 1 second)
+  useEffect(() => {
+    if (!taskAlarmsEnabled) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const curYMD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const curTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      Object.entries(taskReminders).forEach(([remKey, remValue]) => {
+        const rem = remValue as TaskReminder;
+        if (rem.enabled && !rem.triggered && rem.date === curYMD && rem.time === curTime) {
+          playModernChime(); // Rings 3 times
+          setActiveAlarmModal(rem);
+
+          // Mark task done and move down if autoMoveCompleted is enabled
+          markTaskDoneFromAlarm(rem.modeKey, rem.taskText);
+
+          setTaskReminders((prev) => {
+            const next = {
+              ...prev,
+              [remKey]: { ...(prev[remKey] as TaskReminder), triggered: true },
+            };
+            localStorage.setItem('fm_task_reminders', JSON.stringify(next));
+            return next;
+          });
+        }
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [taskAlarmsEnabled, taskReminders, autoMoveCompleted]);
 
   const handleAnimationsEnabledChange = (val: boolean) => {
     setAnimationsEnabled(val);
@@ -1133,6 +1327,7 @@ export default function App() {
     setIsTimerRunning(false);
     setAlarmEnabled(true);
     setAnimateMinimizedText(true);
+    setAutoMoveCompleted(true);
     setAnimationsEnabled(true);
     setWallpaperUrl(wallpaperExecutiveArt);
     setCustomWallpapers([]);
@@ -1921,16 +2116,51 @@ export default function App() {
 
     let activeList = selections[currentMode] || [];
     let updated: number[];
+    let isNowChecked = false;
     if (activeList.includes(idx)) {
       updated = activeList.filter((v) => v !== idx);
       playSoundChime('check');
     } else {
       updated = [...activeList, idx];
+      isNowChecked = true;
       playSoundChime('check');
       const totalOptionsCount = modes[currentMode].options.length;
       if (updated.length === totalOptionsCount && totalOptionsCount > 0) {
         setTimeout(() => playSoundChime('complete'), 150);
         triggerCompletedSplash(currentMode);
+      }
+    }
+
+    if (autoMoveCompleted) {
+      const currentOptions = modes[currentMode]?.options || [];
+      if (currentOptions.length > 0) {
+        const uncheckedIdxs = currentOptions.map((_, i) => i).filter((i) => !updated.includes(i));
+        const checkedIdxs = currentOptions.map((_, i) => i).filter((i) => updated.includes(i));
+
+        let finalCheckedIdxs = checkedIdxs;
+        if (isNowChecked) {
+          const otherChecked = checkedIdxs.filter((i) => i !== idx);
+          finalCheckedIdxs = [...otherChecked, idx];
+        }
+
+        const finalOrderIdxs = [...uncheckedIdxs, ...finalCheckedIdxs];
+        const newOptions = finalOrderIdxs.map((i) => currentOptions[i]);
+        const newSelIndices = Array.from({ length: finalCheckedIdxs.length }, (_, i) => uncheckedIdxs.length + i);
+
+        const updatedModes = {
+          ...modes,
+          [currentMode]: {
+            ...modes[currentMode],
+            options: newOptions,
+          },
+        };
+        setModes(updatedModes);
+        localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+
+        const nextSelections = { ...selections, [currentMode]: newSelIndices };
+        setSelections(nextSelections);
+        localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(newSelIndices));
+        return;
       }
     }
 
@@ -3033,6 +3263,32 @@ export default function App() {
                 />
               </div>
 
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Move Checked to Bottom</span>
+                <GooeyNav
+                  items={[
+                    { label: 'On', onClick: () => handleAutoMoveCompletedChange(true) },
+                    { label: 'Off', onClick: () => handleAutoMoveCompletedChange(false) },
+                  ]}
+                  activeIndex={autoMoveCompleted ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Task Alarms & Reminders</span>
+                <GooeyNav
+                  items={[
+                    { label: 'On', onClick: () => handleToggleTaskAlarmsEnabled(true) },
+                    { label: 'Off', onClick: () => handleToggleTaskAlarmsEnabled(false) },
+                  ]}
+                  activeIndex={taskAlarmsEnabled ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
               {/* Wallpaper Background Settings */}
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3423,6 +3679,116 @@ export default function App() {
           </div>
         )}
 
+        {/* Calendar Reminder View Overlay */}
+        {activeCalendarTask && (
+          <CalendarReminderView
+            modeKey={activeCalendarTask.modeKey}
+            taskText={activeCalendarTask.taskText}
+            taskIdx={activeCalendarTask.taskIdx}
+            existingReminder={taskReminders[`${activeCalendarTask.modeKey}_${activeCalendarTask.taskIdx}`]}
+            allReminders={taskReminders}
+            isLight={isLight}
+            accentSoft={modes[currentMode]?.soft}
+            modeColor={modes[activeCalendarTask.modeKey]?.accent || '#38bdf8'}
+            wallpaperUrl={wallpaperUrl}
+            onSaveReminder={handleSaveTaskReminder}
+            onDeleteReminder={handleDeleteTaskReminder}
+            onClose={() => setActiveCalendarTask(null)}
+          />
+        )}
+
+        {/* Active Alarm Ringing Alert Glassy Popup Modal */}
+        {activeAlarmModal && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 100,
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(25px)',
+              WebkitBackdropFilter: 'blur(25px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+              borderRadius: '32px',
+              animation: 'fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '300px',
+                background: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(30, 41, 59, 0.95)',
+                border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '24px',
+                padding: '20px',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                color: isLight ? '#0f172a' : '#ffffff',
+              }}
+            >
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '12px',
+                  boxShadow: '0 8px 20px rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#f59e0b', marginBottom: '4px' }}>
+                ⏰ Task Reminder Alarm
+              </span>
+
+              <h3 style={{ margin: '4px 0 6px', fontSize: '16px', fontWeight: 800 }}>
+                {activeAlarmModal.taskText}
+              </h3>
+
+              {activeAlarmModal.note && (
+                <p style={{ margin: '0 0 12px', fontSize: '12px', opacity: 0.8, fontStyle: 'italic' }}>
+                  "{activeAlarmModal.note}"
+                </p>
+              )}
+
+              <span style={{ fontSize: '11px', opacity: 0.6, marginBottom: '16px' }}>
+                Set for {activeAlarmModal.date} at {activeAlarmModal.time}
+              </span>
+
+              <button
+                onClick={() => setActiveAlarmModal(null)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '99px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                }}
+              >
+                Dismiss Alarm
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Text Header Mode Descriptions */}
         <div className="mode-row">
           <p className="mode-label" style={{ margin: 0 }}>Mode</p>
@@ -3647,8 +4013,10 @@ export default function App() {
                   borderRadius: '999px',
                   border: 'none',
                   userSelect: 'none',
-                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transition: 'background 0.18s, color 0.18s',
                   cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
                 }}
                 onClick={() => setIsTimerRunning(!isTimerRunning)}
                 title={isTimerRunning ? "Pause timer" : "Start timer"}
@@ -3657,6 +4025,9 @@ export default function App() {
                   style={{
                     fontFamily: 'var(--font-mono), monospace',
                     letterSpacing: '0.04em',
+                    fontVariantNumeric: 'tabular-nums',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                 >
                   {formatTime(countdownTimeLeft)}
@@ -3800,9 +4171,11 @@ export default function App() {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       maxWidth: '100%',
-                      lineHeight: '1.2',
-                      paddingBottom: '2px',
-                      display: 'block',
+                      lineHeight: '38px',
+                      height: '38px',
+                      paddingBottom: '0',
+                      display: 'flex',
+                      alignItems: 'center',
                       fontSize: dynamicFontSize,
                       flex: 1,
                       minWidth: 0,
@@ -3854,12 +4227,14 @@ export default function App() {
 
         {/* Dynamic Items list area */}
         <div className="card-body">
-          <div className="scroll-area">
+          <div className={`scroll-area ${isScrolling ? 'is-scrolling' : ''}`} onScroll={handleScrollAreaScroll}>
             <ul className="options" id="options-list">
               {modes[currentMode]?.options.map((itemText, optionIdx) => {
                 const isItemChecked = (selections[currentMode] || []).includes(optionIdx);
                 const isEditingItem = editingItemIdx === optionIdx;
                 const totalOptionsCount = modes[currentMode]?.options.length || 0;
+                const itemReminderKey = `${currentMode}_${optionIdx}`;
+                const itemReminder = taskReminders[itemReminderKey] || Object.values(taskReminders).find(r => (r as TaskReminder).modeKey === currentMode && (r as TaskReminder).taskText === itemText) as TaskReminder | undefined;
 
                 return (
                   <li
@@ -3939,6 +4314,53 @@ export default function App() {
                     ) : (
                       <span className="opt-text">{itemText}</span>
                     )}
+
+                    {/* Clock Icon button to open Calendar Reminder page */}
+                    {!isEditingItem && (() => {
+                      const modeAccent = modes[currentMode]?.accent || '#3b82f6';
+                      const hasActiveReminder = itemReminder && itemReminder.enabled;
+                      return (
+                        <button
+                          className={`option-clock-btn ${hasActiveReminder ? 'has-reminder' : ''}`}
+                          title={
+                            hasActiveReminder
+                              ? `Reminder set for ${itemReminder.date} at ${itemReminder.time}${itemReminder.note ? ` (${itemReminder.note})` : ''}`
+                              : 'Set calendar date & time reminder'
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCalendarTask({ modeKey: currentMode, taskText: itemText, taskIdx: optionIdx });
+                          }}
+                          style={{
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            lineHeight: 1,
+                            ...(hasActiveReminder
+                              ? {
+                                  color: modeAccent,
+                                  border: 'none',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  background: isLight ? '#ffffff' : 'rgba(0,0,0,0.35)',
+                                  boxShadow: isLight ? '0 1px 3px rgba(0, 0, 0, 0.08)' : '0 1px 4px rgba(0, 0, 0, 0.25)',
+                                }
+                              : {})
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: modeAccent, flexShrink: 0, display: 'block' }}>
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          {hasActiveReminder && (
+                            <span className="reminder-time-badge" style={{ color: modeAccent, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0, fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>{itemReminder.time}</span>
+                          )}
+                        </button>
+                      );
+                    })()}
 
                     {/* Action reorder & delete buttons in edit mode */}
                     {editMode && (
