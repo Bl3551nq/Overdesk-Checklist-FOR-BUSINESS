@@ -60,7 +60,9 @@ html, body {
 /* ═══════════════════════════════════════════════════════
    BORDERLESS DRAG REGIONS (Electron Drag Handling)
 ═══════════════════════════════════════════════════════ */
-body.electron .card {
+body.electron .card,
+body.electron .icon-picker,
+body.electron #settings-panel {
   -webkit-app-region: drag;
 }
 
@@ -71,7 +73,8 @@ body.electron .resize-handle, body.electron .reset-wrap, body.electron .color-sw
 body.electron .color-custom-wrap, body.electron .title-wrap, body.electron .title, 
 body.electron .title-container-editable, body.electron .edit-title-btn,
 body.electron .title-input, body.electron .mode-label, body.electron a, body.electron select, body.electron .picker-grid,
-body.electron .icon-picker, body.electron #settings-panel, body.electron .settings-body, body.electron .setting-section,
+body.electron .color-row, body.electron .picker-done, body.electron .picker-close,
+body.electron .settings-body, body.electron .setting-section,
 body.electron .no-drag,
 body.electron input[type="range"],
 body.electron input[type="range"]::-webkit-slider-thumb,
@@ -1337,8 +1340,10 @@ body.editing .option { cursor: default; }
   color: rgba(255, 255, 255, 0.95) !important;
   stroke: currentColor;
 }
-.card.light .picker-item svg {
-  color: rgba(0, 0, 0, 0.82) !important;
+.card.light .picker-item svg,
+.card.light .picker-item svg * {
+  color: #000000 !important;
+  stroke: #000000 !important;
 }
 
 .picker-item .custom-svg-icon {
@@ -1346,8 +1351,58 @@ body.editing .option { cursor: default; }
   height: 18px !important;
   color: rgba(255, 255, 255, 0.95) !important;
 }
-.card.light .picker-item .custom-svg-icon {
-  color: rgba(0, 0, 0, 0.82) !important;
+.card.light .picker-item .custom-svg-icon,
+.card.light .picker-item .custom-svg-icon * {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+.card.light .icon-picker {
+  background: 
+    radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.98) 0%, transparent 45%),
+    radial-gradient(circle at 90% 85%, var(--accent-soft) 0%, transparent 60%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(240, 243, 255, 0.98) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.9) inset, 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+.card.light .picker-title {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.card.light .picker-close {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.7);
+}
+.card.light .picker-close:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+
+.card.light .picker-item {
+  color: #000000;
+}
+.card.light .picker-item:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.card.light .picker-item.current {
+  background: var(--accent-soft);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.card.light .picker-item span {
+  color: #000000 !important;
+  font-weight: 600;
+}
+
+.card.light .picker-item.picker-upload {
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+}
+.card.light .picker-item.picker-upload svg,
+.card.light .picker-item.picker-upload svg * {
+  color: #000000 !important;
+  stroke: #000000 !important;
 }
 
 .picker-item img,

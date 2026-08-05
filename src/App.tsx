@@ -1640,8 +1640,6 @@ start "" "${currentUrl}"
         curr.closest('.mode-drag-handle') ||
         curr.closest('.edit-toggle') ||
         curr.closest('.settings-toggle') ||
-        curr.closest('#settings-panel') ||
-        curr.closest('.icon-picker') ||
         curr.closest('.settings-body') ||
         curr.closest('.setting-section') ||
         curr.closest('.wallpaper-opacity-slider') ||
@@ -3271,10 +3269,8 @@ start "" "${currentUrl}"
         {/* Global Settings Panel overlay */}
         {settingsOpen && (
           <div
-            className="icon-picker open no-drag"
+            className="icon-picker open"
             id="settings-panel"
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="picker-header" style={{ flexDirection: 'column', alignItems: 'center', marginBottom: '4px', gap: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
@@ -3293,7 +3289,12 @@ start "" "${currentUrl}"
               <span className="picker-title" style={{ textAlign: 'center', fontSize: '11px', letterSpacing: '0.14em', fontWeight: 700 }}>Settings</span>
             </div>
 
-            <div className="settings-body no-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}>
+            <div
+              className="settings-body no-scrollbar"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}
+            >
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Window Scale</span>
                 <GooeyNav
