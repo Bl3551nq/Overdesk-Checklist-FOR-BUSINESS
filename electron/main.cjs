@@ -182,14 +182,14 @@ function createTray() {
 
   let trayIcon;
   if (fs.existsSync(iconPath)) {
-    // Windows & Linux support High-DPI taskbar tray icons (up to 64x64). macOS menu bar icon standard is 24x24.
+    // Windows supports High-DPI taskbar icons (44x44). macOS menu bar icon standard is 22x22. Linux is 32x32.
     if (process.platform === 'win32') {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 64, height: 64, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 44, height: 44, quality: 'best' });
     } else if (process.platform === 'darwin') {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 22, height: 22, quality: 'best' });
       trayIcon.setTemplateImage(true);
     } else {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 64, height: 64, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32, quality: 'best' });
     }
   } else {
     trayIcon = nativeImage.createEmpty();
@@ -223,7 +223,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('Overdesk Everyone');
+  tray.setToolTip('Overdesk Checklist');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
@@ -337,25 +337,18 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
   }
 
   // Attempt to load Gumroad config from package.json dynamically so developers can override without editing code
-  let productId = 'njBrop7enJxgaZWr4Y7-dQ==';
+  let productId = 'IuGRgU5DfICDDM1w7-eY7Q==';
+  let productPermalink = 'app3';
   let accessToken = '';
-  let usePermalink = false;
 
   try {
     const pkgPath = path.join(__dirname, '../package.json');
     if (fs.existsSync(pkgPath)) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       if (pkg.gumroad) {
-        if (pkg.gumroad.product_id) {
-          productId = pkg.gumroad.product_id;
-          usePermalink = false;
-        } else if (pkg.gumroad.product_permalink) {
-          productId = pkg.gumroad.product_permalink;
-          usePermalink = true;
-        }
-        if (pkg.gumroad.access_token !== undefined) {
-          accessToken = pkg.gumroad.access_token;
-        }
+        if (pkg.gumroad.product_id) productId = pkg.gumroad.product_id;
+        if (pkg.gumroad.product_permalink) productPermalink = pkg.gumroad.product_permalink;
+        if (pkg.gumroad.access_token !== undefined) accessToken = pkg.gumroad.access_token;
       }
     }
   } catch (pkgErr) {
@@ -389,70 +382,73 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
   // Always call Gumroad with increment_uses_count: false after the first activation so the count stays at 1 and is only used as a flag
   const shouldIncrement = !hasFirstActivated;
 
-  // Gumroad API can be sensitive to content-types. We try URL-encoded first and fall back to JSON.
-  try {
-    const params = new URLSearchParams();
-    params.append('license_key', licenseKey);
-    params.append('increment_uses_count', shouldIncrement ? 'true' : 'false');
-    if (usePermalink) {
-      params.append('product_permalink', productId);
-    } else {
-      params.append('product_id', productId);
-    }
-    if (accessToken) {
-      params.append('access_token', accessToken);
-    }
-
-    console.log(`Verifying license with Gumroad URL-encoded API. Product ID: ${productId}`);
-    let response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-      },
-      body: params.toString()
-    });
-
-    let data = {};
-    try {
-      data = await response.json();
-    } catch (jsonErr) {
-      console.error('Failed to parse Gumroad response as JSON, trying text:', jsonErr);
-    }
-
-    console.log('Gumroad direct response state:', response.status, data);
-
-    if (!response.ok || !data.success) {
-      // Fallback to JSON payload
-      const requestBody = {
+  // Helper function to call Gumroad verify endpoint
+  async function verifyWithGumroad(paramKey, paramVal, isJson = false) {
+    if (isJson) {
+      const bodyObj = {
         license_key: licenseKey,
-        increment_uses_count: shouldIncrement
+        increment_uses_count: shouldIncrement,
+        [paramKey]: paramVal,
       };
-      if (usePermalink) {
-        requestBody.product_permalink = productId;
-      } else {
-        requestBody.product_id = productId;
-      }
-      if (accessToken) {
-        requestBody.access_token = accessToken;
-      }
-
-      console.log('Trying JSON fallback verification...');
-      const fallbackResponse = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+      if (accessToken) bodyObj.access_token = accessToken;
+      const res = await fetch('https://api.gumroad.com/v2/licenses/verify', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(bodyObj),
       });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    } else {
+      const params = new URLSearchParams();
+      params.append('license_key', licenseKey);
+      params.append('increment_uses_count', shouldIncrement ? 'true' : 'false');
+      params.append(paramKey, paramVal);
+      if (accessToken) params.append('access_token', accessToken);
+      const res = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: params.toString(),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+  }
 
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        console.log('Gumroad JSON response:', fallbackResponse.status, fallbackData);
-        data = fallbackData; // retain latest error message if still failed
+  try {
+    console.log(`Verifying license with Gumroad. Product ID: ${productId}, Permalink: ${productPermalink}`);
+    
+    // Attempt 1: product_id URL-encoded
+    let result = await verifyWithGumroad('product_id', productId, false);
+
+    // Attempt 2: product_permalink URL-encoded if attempt 1 failed
+    if (!result.data || !result.data.success) {
+      console.log('Trying product_permalink URL-encoded fallback...');
+      const altResult = await verifyWithGumroad('product_permalink', productPermalink, false);
+      if (altResult.data && altResult.data.success) {
+        result = altResult;
       }
     }
+
+    // Attempt 3: product_id JSON fallback if still failed
+    if (!result.data || !result.data.success) {
+      console.log('Trying product_id JSON fallback...');
+      const altResult = await verifyWithGumroad('product_id', productId, true);
+      if (altResult.data && altResult.data.success) {
+        result = altResult;
+      }
+    }
+
+    // Attempt 4: product_permalink JSON fallback if still failed
+    if (!result.data || !result.data.success) {
+      console.log('Trying product_permalink JSON fallback...');
+      const altResult = await verifyWithGumroad('product_permalink', productPermalink, true);
+      if (altResult.data && altResult.data.success) {
+        result = altResult;
+      }
+    }
+
+    const { data, status } = result;
+    console.log('Gumroad direct response state:', status, data);
 
     // Process Gumroad result
     if (data.success) {
@@ -624,12 +620,12 @@ ipcMain.on('save-icon', (event, dataUrl) => {
     if (tray) {
       let trayImg;
       if (process.platform === 'win32') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 64, height: 64, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 44, height: 44, quality: 'best' });
       } else if (process.platform === 'darwin') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 24, height: 24, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 22, height: 22, quality: 'best' });
         trayImg.setTemplateImage(true);
       } else {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 64, height: 64, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 32, height: 32, quality: 'best' });
       }
       tray.setImage(trayImg);
     }
