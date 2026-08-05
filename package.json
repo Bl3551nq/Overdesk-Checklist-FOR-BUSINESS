@@ -12,7 +12,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "node electron/fetch-logo.cjs && node electron/init-build.cjs && vite build",
+    "build": "node -e \"const fs=require('fs'),cp=require('child_process'); if(fs.existsSync('./electron/fetch-logo.cjs')){try{cp.execSync('node electron/fetch-logo.cjs',{stdio:'inherit'})}catch(e){}} if(fs.existsSync('./electron/init-build.cjs')){try{cp.execSync('node electron/init-build.cjs',{stdio:'inherit'})}catch(e){}}\" && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
