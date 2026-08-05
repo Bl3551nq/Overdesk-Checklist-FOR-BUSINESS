@@ -1,12 +1,12 @@
 {
-  "name": "overdesk-checklist",
+  "name": "overdesk-everyone",
   "private": true,
-  "version": "2.0.0",
-  "description": "Overdesk Checklist - Minimalistic transparent overlay desktop widget checklist.",
+  "version": "1.0.0",
+  "description": "Overdesk Everyone - Minimalistic transparent overlay desktop widget checklist.",
   "author": "Overdesk",
   "gumroad": {
-    "product_id": "IuGRgU5DfICDDM1w7-eY7Q==",
-    "product_permalink": "app3"
+    "product_id": "njBrop7enJxgaZWr4Y7-dQ==",
+    "product_permalink": "everyone"
   },
   "type": "module",
   "main": "electron/main.cjs",
@@ -20,14 +20,13 @@
     "electron:build": "npm run build && electron-builder --win"
   },
   "build": {
-    "appId": "com.overdesk.checklist",
-    "productName": "Overdesk Checklist",
+    "appId": "com.overdesk.everyone",
+    "productName": "Overdesk Everyone",
     "icon": "electron/icon.png",
     "win": {
       "target": [
         "nsis"
       ],
-      "artifactName": "Overdesk-Checklist.${ext}",
       "icon": "electron/icon.png",
       "requestedExecutionLevel": "asInvoker"
     },

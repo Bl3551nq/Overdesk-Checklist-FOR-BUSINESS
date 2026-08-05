@@ -47,6 +47,17 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════
+   NO SCROLLBAR UTILITY
+═══════════════════════════════════════════════════════ */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ═══════════════════════════════════════════════════════
    BORDERLESS DRAG REGIONS (Electron Drag Handling)
 ═══════════════════════════════════════════════════════ */
 body.electron .card {
@@ -60,25 +71,12 @@ body.electron .resize-handle, body.electron .reset-wrap, body.electron .color-sw
 body.electron .color-custom-wrap, body.electron .title-wrap, body.electron .title, 
 body.electron .title-container-editable, body.electron .edit-title-btn,
 body.electron .title-input, body.electron .mode-label, body.electron a, body.electron select, body.electron .picker-grid,
-body.electron .settings-body, body.electron .setting-section,
+body.electron .icon-picker, body.electron #settings-panel, body.electron .settings-body, body.electron .setting-section,
 body.electron .no-drag,
 body.electron input[type="range"],
 body.electron input[type="range"]::-webkit-slider-thumb,
 body.electron input[type="range"]::-webkit-slider-runnable-track {
   -webkit-app-region: no-drag !important;
-}
-
-body.electron .picker-header {
-  -webkit-app-region: drag !important;
-  cursor: grab;
-}
-
-body.electron .picker-header button,
-body.electron .picker-header input,
-body.electron .picker-header .picker-done,
-body.electron .picker-header .picker-close {
-  -webkit-app-region: no-drag !important;
-  cursor: pointer;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -580,6 +578,9 @@ body.editing .icon-btn::after {
 }
 
 .title-wrap {
+  height: 38px;
+  min-height: 38px;
+  max-height: 38px;
   margin-bottom: 12px;
   flex-shrink: 0;
   display: flex;
@@ -591,18 +592,16 @@ body.editing .icon-btn::after {
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  height: 36px;
-  min-height: 36px;
-  max-height: 36px;
   opacity: 1;
   overflow: hidden;
-  padding-bottom: 2px;
+  padding-bottom: 0;
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .title-container-editable {
   flex: 1;
   min-width: 0;
+  height: 38px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -614,9 +613,11 @@ body.editing .icon-btn::after {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
-  line-height: 1.2;
-  padding-bottom: 2px;
-  display: block;
+  line-height: 38px;
+  height: 38px;
+  padding-bottom: 0;
+  display: flex;
+  align-items: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -811,6 +812,8 @@ body.editing .icon-btn::after {
   padding-left: 0;
   padding-right: 0;
   height: 176px;
+  min-height: 176px;
+  max-height: 176px;
   flex-shrink: 0;
   scrollbar-width: none;
 }
@@ -945,7 +948,7 @@ body.editing .icon-btn::after {
 }
 .card.light .opt-text {
   color: #0f172a;
-  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95), 0 0 8px rgba(255, 255, 255, 0.85);
+  text-shadow: none;
 }
 .option.selected .opt-text {
   text-decoration: line-through;
@@ -955,8 +958,79 @@ body.editing .icon-btn::after {
 }
 .card.light .option.selected .opt-text {
   color: #475569;
+  text-shadow: none;
   opacity: 0.85;
 }
+
+/* Clock Icon Button beside checklist items */
+.option-clock-btn {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text, #ffffff);
+  opacity: 0.4;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 6px;
+  transition: opacity 0.18s, background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: auto;
+  z-index: 4;
+  line-height: 1;
+}
+.card.light .option-clock-btn {
+  color: #0f172a;
+  opacity: 0.45;
+}
+.option-clock-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.08);
+}
+.card.light .option-clock-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.option-clock-btn.has-reminder {
+  opacity: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: opacity 0.18s, background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
+}
+.option-clock-btn.has-reminder svg {
+  filter: drop-shadow(0 0 4px currentColor);
+  flex-shrink: 0;
+  display: block;
+}
+
+.reminder-time-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 
 .opt-input {
   flex: 1;
@@ -1141,43 +1215,14 @@ body.editing .option { cursor: default; }
 .settings-body {
   overflow-y: auto !important;
   max-height: 350px;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.28) rgba(0, 0, 0, 0.1);
+  padding-right: 2px;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 .settings-body::-webkit-scrollbar {
-  width: 5px !important;
-  display: block !important;
-}
-.settings-body::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.12) !important;
-  border-radius: 10px !important;
-}
-.settings-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25) !important;
-  border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  transition: all 0.2s ease !important;
-}
-.settings-body::-webkit-scrollbar-thumb:hover,
-.settings-body::-webkit-scrollbar-thumb:active {
-  background: var(--accent) !important;
-  box-shadow: 0 0 10px var(--accent) !important;
-}
-
-body.theme-light .settings-body {
-  scrollbar-color: rgba(0, 0, 0, 0.28) rgba(0, 0, 0, 0.04);
-}
-body.theme-light .settings-body::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05) !important;
-}
-body.theme-light .settings-body::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.22) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-}
-body.theme-light .settings-body::-webkit-scrollbar-thumb:hover,
-body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
-  background: var(--accent) !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 @keyframes pickerIn {
   from { opacity: 0; transform: scale(0.95); }
@@ -1190,11 +1235,6 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
   justify-content: space-between;
   margin-bottom: 10px;
   flex-shrink: 0;
-  cursor: grab;
-  user-select: none;
-}
-.picker-header:active {
-  cursor: grabbing;
 }
 .picker-title {
   font-size: 10px;
@@ -1294,24 +1334,20 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
   width: 18px !important;
   height: 18px !important;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.95) !important;
   stroke: currentColor;
 }
 .card.light .picker-item svg {
-  color: #0f172a !important;
-  stroke: #0f172a !important;
+  color: rgba(0, 0, 0, 0.82) !important;
 }
 
 .picker-item .custom-svg-icon {
   width: 18px !important;
   height: 18px !important;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.95) !important;
 }
-.card.light .picker-item .custom-svg-icon,
-.card.light .picker-item .custom-svg-icon svg {
-  color: #0f172a !important;
-  fill: #0f172a !important;
-  stroke: #0f172a !important;
+.card.light .picker-item .custom-svg-icon {
+  color: rgba(0, 0, 0, 0.82) !important;
 }
 
 .picker-item img,
@@ -1377,19 +1413,19 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
   background: rgba(0, 0, 0, 0.03);
 }
 .picker-item span {
-  font-size: 8.5px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
   text-align: center;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 .card.light .picker-item span {
-  color: rgba(0, 0, 0, 0.85);
+  color: rgba(0, 0, 0, 0.65);
 }
 
 .card.light .icon-picker {
@@ -1403,28 +1439,24 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
   box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.9) inset;
 }
 .card.light .picker-title {
-  color: #0f172a !important;
-  font-weight: 700;
-  opacity: 0.85;
+  color: rgba(0, 0, 0, 0.35);
 }
 .card.light .picker-close {
-  background: rgba(0, 0, 0, 0.08);
-  color: #0f172a !important;
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.35);
 }
 .card.light .picker-close:hover {
   background: rgba(200, 0, 0, 0.1);
-  color: rgba(180, 0, 0, 0.85) !important;
+  color: rgba(180, 0, 0, 0.85);
 }
 .card.light .picker-item:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.05);
 }
 .card.light .picker-item svg {
-  color: #0f172a !important;
-  stroke: #0f172a !important;
+  color: rgba(0, 0, 0, 0.65);
 }
 .card.light .picker-item span {
-  color: #0f172a !important;
-  font-weight: 600;
+  color: rgba(0, 0, 0, 0.35);
 }
 
 .color-row {
@@ -1492,15 +1524,6 @@ body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
   stroke-width: 2;
   stroke-linecap: round;
   pointer-events: none;
-}
-.card.light .color-custom-wrap {
-  border-color: rgba(0, 0, 0, 0.35);
-}
-.card.light .color-custom-wrap:hover {
-  border-color: #0f172a;
-}
-.card.light .color-custom-wrap svg {
-  stroke: #0f172a !important;
 }
 .color-custom-input {
   position: absolute;
@@ -1791,5 +1814,27 @@ body.animations-disabled *::after {
 
 .card.light .reorder-item-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.14) !important;
+}
+
+/* Universal Invisible Scrollbar utility */
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Calendar Reminder View custom invisible scrollbar */
+.calendar-scroll-body {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+.calendar-scroll-body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 

@@ -1,50 +1,24 @@
-# Overdesk Checklist
+# Overdesk
 
-A sleek, minimalistic transparent desktop overlay checklist designed for Windows. Keep your key daily focus, tasks, and routines floating seamlessly on your desktop with responsive scaling, custom wallpapers, and automated updates.
+A focus-oriented productivity desktop application featuring customizable modes, daily task tracking, pomodoro loops, interactive widget dashboards, and calendar reminders.
 
----
+## Features
 
-## 🌟 Features
-
-- **Floating Transparent Overlay**: Clean, frameless desktop widget with subtle glassmorphism and custom backdrop opacity.
-- **Always-on-Top & Responsive Scaling**: Adjust overall scale, position, and dimensions while preserving aspect ratio.
-- **Custom Wallpapers & Light/Dark Themes**: Toggle high-contrast light or executive dark palettes and custom image backgrounds.
-- **Smart Task Management**: Interactive check states, optional auto-moving completed items to bottom, custom audio feedback, and streak counters.
-- **License Protection**: Integrated Gumroad license key validation and secure machine activation logic.
-- **Automated Windows Installer**: Automated GitHub Actions CI/CD workflow producing installer artifacts (`Overdesk-Checklist.exe`).
+- **Customizable Modes & Focus Loops**: Tailored workspaces for work, study, coding, and creative sessions.
+- **Calendar & Task Reminders**: Weekly and monthly views with custom time presets, timezone integration, and highlighted dates.
+- **Interactive Widgets**: Ambient sounds, floating note tiles, timer controls, and customized dark/light themes.
 
 ---
 
-## 📦 Building from Source
+## 🔒 License & Copyright
 
-### Prerequisites
-- Node.js 20+
-- npm / bun
+**Copyright (c) 2026. All Rights Reserved.**
 
-### Installation & Development
-```bash
-# Install dependencies
-npm install
+This software and its associated source code, design assets, and intellectual property are **strictly proprietary**. 
 
-# Run Web Dev Server
-npm run dev
+### Restrictions:
+- **No Unsolicited Forking or Copying**: Unauthorized duplication, distribution, modification, reverse engineering, or re-hosting of any part of this codebase is strictly prohibited.
+- **No Commercial Use**: You may not use this codebase or any portion thereof for commercial purposes.
+- **No Redistribution**: Private or public mirroring, re-distribution, or public posting of source code without express written consent from the copyright holder is strictly forbidden.
 
-# Run Electron Desktop App in Development
-npm run electron:dev
-
-# Build Windows Executable
-npm run electron:build
-```
-
----
-
-## 🔒 License & Intellectual Property Notice
-
-**Copyright (c) 2026 Overdesk. All Rights Reserved.**
-
-This repository and its source code, assets, graphics, and build configurations are **PROPRIETARY AND CONFIDENTIAL**. 
-
-- **No Forking or Re-distribution**: You are strictly prohibited from copying, forking, reproducing, modifying, re-licensing, distributing, selling, or creating derivative works of this project or its compiled assets without explicit written permission from Overdesk.
-- **Intellectual Property**: All rights, title, branding, logos, graphics, and codebase logic remain exclusively owned by Overdesk.
-
-For more details, please review the full [LICENSE](LICENSE) file.
+See the full [LICENSE](./LICENSE) file for complete terms and conditions.
