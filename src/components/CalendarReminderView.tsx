@@ -23,7 +23,8 @@ export interface CalendarReminderViewProps {
   modeColor?: string;
   wallpaperUrl?: string;
   onSaveReminder: (reminder: Omit<TaskReminder, 'id'>) => void;
-  onDeleteReminder: (taskIdx: number) => void;
+  onDeleteReminder: (taskIdx: number, modeKey?: string) => void;
+  onDeleteAllReminders?: () => void;
   onClose: () => void;
 }
 
@@ -332,6 +333,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   wallpaperUrl,
   onSaveReminder,
   onDeleteReminder,
+  onDeleteAllReminders,
   onClose,
 }) => {
   const [viewTab, setViewTab] = useState<'weekly' | 'monthly'>('weekly');
@@ -694,10 +696,10 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
             flexDirection: 'column',
             flex: 1,
             minHeight: 0,
-            overflowY: 'auto',
+            overflowY: showAllEvents ? 'hidden' : 'auto',
             paddingRight: '2px',
           }}
-          className="calendar-scroll-body"
+          className="calendar-scroll-body no-scrollbar"
         >
           {/* Target Task Title Banner & Large Typography Date - Hidden when showAllEvents is active */}
           {!showAllEvents && (
@@ -805,9 +807,10 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
               display: 'flex',
               flexDirection: 'column',
               flex: 1,
+              height: '100%',
               minHeight: 0,
               gap: '10px',
-              margin: '2px 0 4px',
+              margin: 0,
               padding: '14px 12px',
               borderRadius: '20px',
               background: isLight ? 'rgba(255, 255, 255, 0.75)' : 'rgba(8, 12, 20, 0.94)',
@@ -815,6 +818,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
               backdropFilter: 'blur(20px)',
               boxShadow: isLight ? '0 2px 10px rgba(0, 0, 0, 0.03)' : '0 8px 28px rgba(0, 0, 0, 0.5)',
               animation: 'fadeInScale 0.2s ease',
+              boxSizing: 'border-box',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', flexShrink: 0 }}>
@@ -901,21 +905,48 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                         <span style={{ fontSize: '13px', fontWeight: 800, color: isLight ? '#0f172a' : '#ffffff', letterSpacing: '-0.01em', wordBreak: 'break-word' }}>
                           {event.taskText}
                         </span>
-                        <span
-                          style={{
-                            fontSize: '10.5px',
-                            fontWeight: 800,
-                            padding: '2.5px 8px',
-                            borderRadius: '6px',
-                            background: isEventToday ? modeColor : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.18)'),
-                            color: isEventToday ? '#ffffff' : (isLight ? '#0f172a' : '#ffffff'),
-                            border: '1px solid ' + (isEventToday ? modeColor : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.25)')),
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {isEventToday ? 'Today' : event.date}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              padding: '2.5px 8px',
+                              borderRadius: '6px',
+                              background: isEventToday ? modeColor : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.18)'),
+                              color: isEventToday ? '#ffffff' : (isLight ? '#0f172a' : '#ffffff'),
+                              border: '1px solid ' + (isEventToday ? modeColor : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.25)')),
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isEventToday ? 'Today' : event.date}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteReminder(event.taskIdx, event.modeKey);
+                            }}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.15)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#f87171',
+                              borderRadius: '6px',
+                              padding: '2px 5px',
+                              fontSize: '10px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title="Delete this event reminder"
+                          >
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: isLight ? '#1e293b' : '#ffffff' }}>
@@ -943,6 +974,44 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 })
               )}
             </div>
+
+            {/* Bottom Action Bar with "Delete All" button */}
+            {getAllUpcomingEvents().length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '6px', borderTop: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDeleteAllReminders) {
+                      onDeleteAllReminders();
+                    }
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(239, 68, 68, 0.18)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    color: '#f87171',
+                    borderRadius: '99px',
+                    padding: '5px 16px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)',
+                    transition: 'all 0.18s ease',
+                  }}
+                  title="Delete all scheduled event times and reminders"
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <line x1="10" y1="11" x2="10" y2="17" />
+                    <line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                  Delete All Events
+                </button>
+              </div>
+            )}
           </div>
         ) : viewTab === 'weekly' ? (
           <div style={{ position: 'relative', margin: '2px 0 8px', width: '100%' }}>
@@ -1238,186 +1307,255 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
           </div>
         )}
 
-        {/* Note and Time Selection Controls */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
-          {/* Note input field with pencil icon */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: isLight ? 'rgba(255, 255, 255, 0.6)' : 'rgba(10, 16, 28, 0.85)',
-              borderRadius: '12px',
-              padding: '6px 10px',
-              border: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.18)',
-              boxShadow: isLight ? '0 1px 3px rgba(0, 0, 0, 0.02)' : '0 4px 14px rgba(0, 0, 0, 0.25)',
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Add a note or reminder detail..."
-              value={reminderNote}
-              onChange={(e) => setReminderNote(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: isLight ? '#0f172a' : '#ffffff',
-                fontSize: '11.5px',
-                width: '100%',
-              }}
-            />
-          </div>
-
-          {/* Custom Time Selector & Quick Preset Chips */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              background: isLight ? 'rgba(255, 255, 255, 0.65)' : 'rgba(10, 16, 28, 0.88)',
-              borderRadius: '16px',
-              padding: '8px 10px',
-              border: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.18)',
-              boxShadow: isLight ? '0 1px 3px rgba(0, 0, 0, 0.02)' : '0 4px 16px rgba(0, 0, 0, 0.35)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {/* Top trigger bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', width: '100%', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8, color: modeColor }}>
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                <span style={{ fontSize: '10.5px', opacity: 0.75, fontWeight: 700 }}>Time:</span>
-                
-                {/* Custom Time Trigger Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowCustomTimePicker(!showCustomTimePicker)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    background: showCustomTimePicker
-                      ? modeColor
-                      : (isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.12)'),
-                    color: showCustomTimePicker ? '#ffffff' : (isLight ? '#0f172a' : '#ffffff'),
-                    border: isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.22)',
-                    borderRadius: '8px',
-                    padding: '3px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 800,
-                    fontVariantNumeric: 'tabular-nums',
-                    cursor: 'pointer',
-                    boxShadow: showCustomTimePicker ? `0 0 10px ${modeColor}60` : 'none',
-                    transition: 'all 0.18s ease',
-                  }}
-                  title="Click to select custom alarm time"
-                >
-                  <span>{formatDisplay12h(selectedTime)}</span>
-                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showCustomTimePicker ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Quick preset time chips */}
-              <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
-                {['09:00', '12:00', '15:00', '18:00', '21:00'].map((t) => {
-                  const isSelected = selectedTime === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTime(t);
-                      }}
-                      style={{
-                        background: isSelected
-                          ? modeColor
-                          : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'),
-                        color: isSelected ? '#ffffff' : (isLight ? '#0f172a' : 'rgba(255,255,255,0.85)'),
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '3px 6px',
-                        fontSize: '9.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {formatDisplay12h(t)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Custom Expanded Glassy Scroll Wheel Time Picker Panel */}
-            {showCustomTimePicker && (
-              <GlassyWheelTimePicker
-                selectedTime={selectedTime}
-                onSelectTime={(newTime) => setSelectedTime(newTime)}
-                isLight={isLight}
-                modeColor={modeColor}
-              />
-            )}
-          </div>
-
-          {/* Action Bar (Save / Delete / Success) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
-            {existingReminder ? (
-              <button
-                onClick={() => onDeleteReminder(taskIdx)}
-                style={{
-                  background: 'rgba(239, 68, 68, 0.2)',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                  color: '#f87171',
-                  borderRadius: '99px',
-                  padding: '6px 12px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Clear Alarm
-              </button>
-            ) : (
-              <span style={{ fontSize: '10px', opacity: 0.6, fontWeight: 500 }}>Alarm rings 3x at target time</span>
-            )}
-
-            <button
-              onClick={handleSave}
+        {/* Note and Time Selection Controls - Hidden when showAllEvents is active */}
+        {!showAllEvents && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto', flexShrink: 0 }}>
+            {/* Note input field with pencil icon */}
+            <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                background: savedSuccess
-                  ? '#10b981'
-                  : `linear-gradient(135deg, ${modeColor}, #2563eb)`,
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '99px',
-                padding: '7px 18px',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: isLight ? '0 2px 8px rgba(37, 99, 235, 0.25)' : '0 4px 14px rgba(0, 0, 0, 0.35)',
-                transition: 'all 0.2s ease',
-                marginLeft: 'auto',
+                gap: '8px',
+                background: isLight ? 'rgba(255, 255, 255, 0.6)' : 'rgba(10, 16, 28, 0.85)',
+                borderRadius: '12px',
+                padding: '6px 10px',
+                border: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.18)',
+                boxShadow: isLight ? '0 1px 3px rgba(0, 0, 0, 0.02)' : '0 4px 14px rgba(0, 0, 0, 0.25)',
               }}
             >
-              {savedSuccess ? '✓ Saved!' : '+ Save Reminder'}
-            </button>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Add a note or reminder detail..."
+                value={reminderNote}
+                onChange={(e) => setReminderNote(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: isLight ? '#0f172a' : '#ffffff',
+                  fontSize: '11.5px',
+                  width: '100%',
+                }}
+              />
+            </div>
+
+            {/* Custom Time Selector & Quick Preset Chips */}
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                background: isLight ? 'rgba(255, 255, 255, 0.65)' : 'rgba(10, 16, 28, 0.88)',
+                borderRadius: '16px',
+                padding: '8px 10px',
+                border: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.18)',
+                boxShadow: isLight ? '0 1px 3px rgba(0, 0, 0, 0.02)' : '0 4px 16px rgba(0, 0, 0, 0.35)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {/* Top trigger bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', width: '100%', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8, color: modeColor }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span style={{ fontSize: '10.5px', opacity: 0.75, fontWeight: 700 }}>Time:</span>
+                  
+                  {/* Custom Time Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomTimePicker(!showCustomTimePicker)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: showCustomTimePicker
+                        ? modeColor
+                        : (isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.12)'),
+                      color: showCustomTimePicker ? '#ffffff' : (isLight ? '#0f172a' : '#ffffff'),
+                      border: isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.22)',
+                      borderRadius: '8px',
+                      padding: '3px 8px',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      fontVariantNumeric: 'tabular-nums',
+                      cursor: 'pointer',
+                      boxShadow: showCustomTimePicker ? `0 0 10px ${modeColor}60` : 'none',
+                      transition: 'all 0.18s ease',
+                    }}
+                    title="Click to open time selection menu"
+                  >
+                    <span>{formatDisplay12h(selectedTime)}</span>
+                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showCustomTimePicker ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Quick preset time chips */}
+                <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
+                  {['09:00', '12:00', '15:00', '18:00', '21:00'].map((t) => {
+                    const isSelected = selectedTime === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTime(t);
+                        }}
+                        style={{
+                          background: isSelected
+                            ? modeColor
+                            : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'),
+                          color: isSelected ? '#ffffff' : (isLight ? '#0f172a' : 'rgba(255,255,255,0.85)'),
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '3px 6px',
+                          fontSize: '9.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {formatDisplay12h(t)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Floating Popout Time Picker Menu */}
+              {showCustomTimePicker && (
+                <>
+                  {/* Backdrop for click outside */}
+                  <div
+                    onClick={() => setShowCustomTimePicker(false)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 89,
+                      background: 'transparent',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 8px)',
+                      left: 0,
+                      right: 0,
+                      zIndex: 90,
+                      background: isLight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(10, 16, 28, 0.96)',
+                      backdropFilter: 'blur(30px) saturate(200%)',
+                      WebkitBackdropFilter: 'blur(30px) saturate(200%)',
+                      borderRadius: '18px',
+                      border: isLight ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(255,255,255,0.22)',
+                      boxShadow: isLight
+                        ? '0 12px 32px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.06)'
+                        : '0 16px 40px rgba(0, 0, 0, 0.75), 0 0 24px rgba(0, 0, 0, 0.5)',
+                      padding: '10px 12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      animation: 'fadeInScale 0.18s ease-out',
+                    }}
+                  >
+                    {/* Header bar of popout menu */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: modeColor }}>
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: isLight ? '#0f172a' : '#ffffff' }}>
+                          Select Time
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomTimePicker(false)}
+                        style={{
+                          background: modeColor,
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '99px',
+                          padding: '3px 10px',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: `0 2px 8px ${modeColor}50`,
+                        }}
+                      >
+                        Done
+                      </button>
+                    </div>
+
+                    {/* Wheel Picker */}
+                    <GlassyWheelTimePicker
+                      selectedTime={selectedTime}
+                      onSelectTime={(newTime) => setSelectedTime(newTime)}
+                      isLight={isLight}
+                      modeColor={modeColor}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Action Bar (Save / Delete / Success) */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
+              {existingReminder ? (
+                <button
+                  onClick={() => onDeleteReminder(taskIdx)}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    color: '#f87171',
+                    borderRadius: '99px',
+                    padding: '6px 12px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear Alarm
+                </button>
+              ) : (
+                <span style={{ fontSize: '10px', opacity: 0.6, fontWeight: 500 }}>Alarm rings 3x at target time</span>
+              )}
+
+              <button
+                onClick={handleSave}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: savedSuccess
+                    ? '#10b981'
+                    : `linear-gradient(135deg, ${modeColor}, #2563eb)`,
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '99px',
+                  padding: '7px 18px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: isLight ? '0 2px 8px rgba(37, 99, 235, 0.25)' : '0 4px 14px rgba(0, 0, 0, 0.35)',
+                  transition: 'all 0.2s ease',
+                  marginLeft: 'auto',
+                }}
+              >
+                {savedSuccess ? '✓ Saved!' : '+ Save Reminder'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   </div>

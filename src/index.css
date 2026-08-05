@@ -1215,43 +1215,14 @@ body.editing .option { cursor: default; }
 .settings-body {
   overflow-y: auto !important;
   max-height: 350px;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.28) rgba(0, 0, 0, 0.1);
+  padding-right: 2px;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 .settings-body::-webkit-scrollbar {
-  width: 5px !important;
-  display: block !important;
-}
-.settings-body::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.12) !important;
-  border-radius: 10px !important;
-}
-.settings-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25) !important;
-  border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  transition: all 0.2s ease !important;
-}
-.settings-body::-webkit-scrollbar-thumb:hover,
-.settings-body::-webkit-scrollbar-thumb:active {
-  background: var(--accent) !important;
-  box-shadow: 0 0 10px var(--accent) !important;
-}
-
-body.theme-light .settings-body {
-  scrollbar-color: rgba(0, 0, 0, 0.28) rgba(0, 0, 0, 0.04);
-}
-body.theme-light .settings-body::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05) !important;
-}
-body.theme-light .settings-body::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.22) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-}
-body.theme-light .settings-body::-webkit-scrollbar-thumb:hover,
-body.theme-light .settings-body::-webkit-scrollbar-thumb:active {
-  background: var(--accent) !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 @keyframes pickerIn {
   from { opacity: 0; transform: scale(0.95); }

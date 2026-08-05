@@ -731,6 +731,44 @@ export default function App() {
   }, [animationsEnabled]);
 
   // ── Task Reminders & Calendar State ──
+  const [startOnBoot, setStartOnBoot] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('fm_start_on_boot');
+      return saved === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const [showAutostartGuideModal, setShowAutostartGuideModal] = useState<boolean>(false);
+
+  const handleToggleStartOnBoot = (val: boolean) => {
+    setStartOnBoot(val);
+    localStorage.setItem('fm_start_on_boot', String(val));
+    if (val) {
+      setShowAutostartGuideModal(true);
+    }
+  };
+
+  const downloadWindowsAutostartBat = () => {
+    const currentUrl = window.location.href;
+    const batContent = `@echo off
+:: OverDesk Auto-Start Script for Windows Startup
+:: Place this file in your Windows Startup Folder (press Win+R -> type shell:startup -> press Enter)
+title Launching OverDesk...
+start "" "${currentUrl}"
+`;
+    const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'OverDesk-AutoStart.bat';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const [taskReminders, setTaskReminders] = useState<Record<string, TaskReminder>>(() => {
     try {
       const saved = localStorage.getItem('fm_task_reminders');
@@ -771,13 +809,19 @@ export default function App() {
     localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
   };
 
-  const handleDeleteTaskReminder = (taskIdx: number) => {
-    if (!activeCalendarTask) return;
-    const remKey = `${activeCalendarTask.modeKey}_${taskIdx}`;
+  const handleDeleteTaskReminder = (taskIdx: number, mKey?: string) => {
+    const targetMode = mKey || activeCalendarTask?.modeKey;
+    if (!targetMode) return;
+    const remKey = `${targetMode}_${taskIdx}`;
     const updated = { ...taskReminders };
     delete updated[remKey];
     setTaskReminders(updated);
     localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
+  };
+
+  const handleDeleteAllTaskReminders = () => {
+    setTaskReminders({});
+    localStorage.setItem('fm_task_reminders', JSON.stringify({}));
   };
 
   const markTaskDoneFromAlarm = (modeKey: string, taskText: string) => {
@@ -3193,7 +3237,7 @@ export default function App() {
               <span className="picker-title" style={{ textAlign: 'center', fontSize: '11px', letterSpacing: '0.14em', fontWeight: 700 }}>Settings</span>
             </div>
 
-            <div className="settings-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}>
+            <div className="settings-body no-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}>
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Window Scale</span>
                 <GooeyNav
@@ -3277,16 +3321,103 @@ export default function App() {
               </div>
 
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
-                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Task Alarms & Reminders</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>
+                    Task Alarms & Reminders
+                  </span>
+                  {!taskAlarmsEnabled && (
+                    <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f87171' }}>
+                      Off
+                    </span>
+                  )}
+                </div>
                 <GooeyNav
                   items={[
-                    { label: 'On', onClick: () => handleToggleTaskAlarmsEnabled(true) },
-                    { label: 'Off', onClick: () => handleToggleTaskAlarmsEnabled(false) },
+                    { label: 'Reminders On', onClick: () => handleToggleTaskAlarmsEnabled(true) },
+                    { label: 'Turn Off Reminders', onClick: () => handleToggleTaskAlarmsEnabled(false) },
                   ]}
                   activeIndex={taskAlarmsEnabled ? 0 : 1}
                   particleCount={12}
                   animationTime={450}
                 />
+                {Object.keys(taskReminders).length > 0 && (
+                  <button
+                    onClick={handleDeleteAllTaskReminders}
+                    style={{
+                      marginTop: '4px',
+                      padding: '5px 8px',
+                      borderRadius: '8px',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: '#f87171',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      transition: 'all 0.18s ease',
+                    }}
+                    title="Clear all scheduled calendar reminders"
+                  >
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Clear All Scheduled Reminders ({Object.keys(taskReminders).length})
+                  </button>
+                )}
+              </div>
+
+              {/* PC Boot Autostart Settings */}
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>
+                    Start App on PC Boot
+                  </span>
+                  {startOnBoot && (
+                    <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#10b981' }}>
+                      On Boot
+                    </span>
+                  )}
+                </div>
+                <GooeyNav
+                  items={[
+                    { label: 'Boot On', onClick: () => handleToggleStartOnBoot(true) },
+                    { label: 'Boot Off', onClick: () => handleToggleStartOnBoot(false) },
+                  ]}
+                  activeIndex={startOnBoot ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+                <button
+                  onClick={() => setShowAutostartGuideModal(true)}
+                  style={{
+                    marginTop: '4px',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    background: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)',
+                    border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.15)',
+                    color: isLight ? '#0f172a' : '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.18s ease',
+                  }}
+                  title="Configure PC boot autostart script and setup instructions"
+                >
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  ⚙️ Setup PC Startup & Download Script
+                </button>
               </div>
 
               {/* Wallpaper Background Settings */}
@@ -3679,6 +3810,219 @@ export default function App() {
           </div>
         )}
 
+        {/* PC Autostart Setup & Helper Modal */}
+        {showAutostartGuideModal && (
+          <div
+            onClick={() => setShowAutostartGuideModal(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999,
+              background: 'rgba(0, 0, 0, 0.68)',
+              backdropFilter: 'blur(16px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              animation: 'fadeInScale 0.2s ease',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: '440px',
+                background: isLight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(12, 18, 30, 0.96)',
+                backdropFilter: 'blur(30px) saturate(200%)',
+                borderRadius: '24px',
+                border: isLight ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(255,255,255,0.22)',
+                boxShadow: isLight ? '0 20px 50px rgba(0, 0, 0, 0.2)' : '0 24px 60px rgba(0, 0, 0, 0.8)',
+                padding: '20px 22px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                color: isLight ? '#0f172a' : '#ffffff',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+              }}
+              className="no-scrollbar"
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, letterSpacing: '-0.01em' }}>
+                      PC Startup & Auto-Launch
+                    </h3>
+                    <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: 500 }}>
+                      Run OverDesk automatically on system boot
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAutostartGuideModal(false)}
+                  style={{
+                    background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Status Badge */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '12px',
+                  background: startOnBoot ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid ' + (startOnBoot ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'),
+                }}
+              >
+                <span style={{ fontSize: '14px' }}>{startOnBoot ? '✅' : '⚡'}</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: startOnBoot ? '#10b981' : '#f59e0b' }}>
+                  {startOnBoot ? 'Startup Mode Active in App Settings' : 'Startup Preference Configured'}
+                </span>
+              </div>
+
+              {/* Option 1: 1-Click Windows Batch Script */}
+              <div
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800 }}>Option 1: Windows 1-Click Startup Shortcut</span>
+                  <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: '#3b82f6', color: '#fff', fontWeight: 800 }}>Recommended</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '11px', opacity: 0.8, lineHeight: 1.4 }}>
+                  Download the startup batch script, then press <code style={{ background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '4px' }}>Win + R</code>, type <code style={{ background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '4px' }}>shell:startup</code>, and drag the downloaded file into that folder.
+                </p>
+                <button
+                  type="button"
+                  onClick={downloadWindowsAutostartBat}
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download OverDesk-AutoStart.bat
+                </button>
+              </div>
+
+              {/* Option 2: Browser PWA Auto-Launch on Login */}
+              <div
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
+                <span style={{ fontSize: '12px', fontWeight: 800 }}>Option 2: Browser App (Chrome / Edge PWA)</span>
+                <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '11px', opacity: 0.8, lineHeight: 1.5 }}>
+                  <li>Click the <strong>Install / App icon</strong> in your browser address bar.</li>
+                  <li>In Chrome/Edge settings or app management page (<code style={{ background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '4px' }}>chrome://apps</code>), right-click OverDesk.</li>
+                  <li>Check <strong>"Start app when you sign in to your computer"</strong>.</li>
+                </ol>
+              </div>
+
+              {/* Option 3: macOS / Linux */}
+              <div
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '16px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <span style={{ fontSize: '11.5px', fontWeight: 800 }}>Mac / Linux Autostart</span>
+                <p style={{ margin: 0, fontSize: '10.5px', opacity: 0.75, lineHeight: 1.4 }}>
+                  On macOS: Open <em>System Settings → General → Login Items</em> and add Chrome/Safari open to this page URL.
+                </p>
+              </div>
+
+              {/* Footer Button */}
+              <button
+                type="button"
+                onClick={() => setShowAutostartGuideModal(false)}
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.14)',
+                  color: 'inherit',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '9px 16px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Calendar Reminder View Overlay */}
         {activeCalendarTask && (
           <CalendarReminderView
@@ -3693,6 +4037,7 @@ export default function App() {
             wallpaperUrl={wallpaperUrl}
             onSaveReminder={handleSaveTaskReminder}
             onDeleteReminder={handleDeleteTaskReminder}
+            onDeleteAllReminders={handleDeleteAllTaskReminders}
             onClose={() => setActiveCalendarTask(null)}
           />
         )}

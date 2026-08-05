@@ -182,14 +182,14 @@ function createTray() {
 
   let trayIcon;
   if (fs.existsSync(iconPath)) {
-    // Windows supports High-DPI taskbar icons (44x44). macOS menu bar icon standard is 22x22. Linux is 32x32.
+    // Windows & Linux support High-DPI taskbar tray icons (up to 64x64). macOS menu bar icon standard is 24x24.
     if (process.platform === 'win32') {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 44, height: 44, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 64, height: 64, quality: 'best' });
     } else if (process.platform === 'darwin') {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 22, height: 22, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24, quality: 'best' });
       trayIcon.setTemplateImage(true);
     } else {
-      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32, quality: 'best' });
+      trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 64, height: 64, quality: 'best' });
     }
   } else {
     trayIcon = nativeImage.createEmpty();
@@ -624,12 +624,12 @@ ipcMain.on('save-icon', (event, dataUrl) => {
     if (tray) {
       let trayImg;
       if (process.platform === 'win32') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 44, height: 44, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 64, height: 64, quality: 'best' });
       } else if (process.platform === 'darwin') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 22, height: 22, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 24, height: 24, quality: 'best' });
         trayImg.setTemplateImage(true);
       } else {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 32, height: 32, quality: 'best' });
+        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 64, height: 64, quality: 'best' });
       }
       tray.setImage(trayImg);
     }
