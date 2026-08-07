@@ -3,19 +3,18 @@ import overdeskLogo from './logo.svg';
 import { MinimizedReminderView } from './components/MinimizedReminderView';
 import { Glass } from './components/Glass';
 import GooeyNav, { triggerGooeyParticles } from './components/GooeyNav';
+import { CalendarReminderView, TaskReminder } from './components/CalendarReminderView';
 
-import wallpaperFocusGoku from './assets/images/focus_goku_wallpaper_1785758162336.jpg';
-import wallpaperBullBearGold from './assets/images/bull_bear_gold_wallpaper_1785758173635.jpg';
-import wallpaperCandlestickNeon from './assets/images/candlestick_neon_wallpaper_1785758185045.jpg';
-import wallpaperCyberFinance from './assets/images/cyber_finance_wallpaper_1785758195446.jpg';
-import wallpaperDisciplinePushup from './assets/images/discipline_pushup_wallpaper_1785758207049.jpg';
+import wallpaperExecutiveArt from './assets/images/wallpaper_executive_art_1784998270755.jpg';
+import wallpaperCyberSkull from './assets/images/wallpaper_cyber_skull_1784998284302.jpg';
+import wallpaperOfficePurple from './assets/images/wallpaper_office_purple_1784998297786.jpg';
+import wallpaperFieryBeast from './assets/images/wallpaper_fiery_beast_1784998309493.jpg';
 
 const PRESET_WALLPAPERS = [
-  { id: 'focus_goku', name: 'Focus (Goku)', url: wallpaperFocusGoku },
-  { id: 'bull_bear_gold', name: 'Golden Bull & Bear', url: wallpaperBullBearGold },
-  { id: 'candlestick_neon', name: 'Neon Candlesticks', url: wallpaperCandlestickNeon },
-  { id: 'cyber_finance', name: 'Cyber Trading Tunnel', url: wallpaperCyberFinance },
-  { id: 'discipline_pushup', name: 'Discipline', url: wallpaperDisciplinePushup },
+  { id: 'executive_art', name: 'Executive Boardroom', url: wallpaperExecutiveArt },
+  { id: 'cyber_skull', name: 'Cyber Neon Skull', url: wallpaperCyberSkull },
+  { id: 'office_purple', name: 'Executive Office', url: wallpaperOfficePurple },
+  { id: 'fiery_beast', name: 'Fiery Beast', url: wallpaperFieryBeast },
 ];
 
 // Declaration to access global Electron API from preload script
@@ -37,67 +36,160 @@ declare global {
   }
 }
 
-// Icon Definitions Dictionary (Forex Trading Icons)
+// Icon Definitions Dictionary
 const ICON_LIBRARY: Record<string, { label: string; svg: React.ReactNode }> = {
-  // --- 1. Market Analysis ---
-  candlestick: {
-    label: 'Candle',
+  // --- Business Icons ---
+  briefcase: {
+    label: 'Business',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="6" y1="3" x2="6" y2="21" />
-        <rect x="4" y="7" width="4" height="9" rx="1" fill="currentColor" fillOpacity="0.25" />
-        <line x1="18" y1="3" x2="18" y2="21" />
-        <rect x="16" y="5" width="4" height="8" rx="1" fill="currentColor" fillOpacity="0.25" />
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+        <path d="M2 12h20" />
       </svg>
     ),
   },
-  bar_chart: {
-    label: 'Bar Chart',
+  building: {
+    label: 'Office',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="7" y1="3" x2="7" y2="21" />
-        <line x1="4" y1="16" x2="7" y2="16" />
-        <line x1="7" y1="7" x2="10" y2="7" />
-        <line x1="17" y1="3" x2="17" y2="21" />
-        <line x1="14" y1="18" x2="17" y2="18" />
-        <line x1="17" y1="9" x2="20" y2="9" />
+        <rect x="4" y="2" width="16" height="20" rx="2" />
+        <line x1="9" y1="6" x2="9" y2="6.01" />
+        <line x1="15" y1="6" x2="15" y2="6.01" />
+        <line x1="9" y1="10" x2="9" y2="10.01" />
+        <line x1="15" y1="10" x2="15" y2="10.01" />
+        <line x1="9" y1="14" x2="9" y2="14.01" />
+        <line x1="15" y1="14" x2="15" y2="14.01" />
+        <path d="M10 22v-4h4v4" />
       </svg>
     ),
   },
-  trendline: {
-    label: 'Trend',
+  handshake: {
+    label: 'Deal',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 17 9 11 13 15 21 7" />
-        <polyline points="16 7 21 7 21 12" />
-        <line x1="3" y1="20" x2="21" y2="20" />
+        <path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" />
+        <path d="m7 21 1.6-1.4c.4-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.8a2 2 0 0 0-2.8-2.8l-2.6 2.6" />
+        <path d="m2 12 3.6-3.6c.8-.8 1.8-1.2 2.8-1.2h3.2" />
+        <path d="M16 5 19 8" />
       </svg>
     ),
   },
-  fibonacci: {
-    label: 'Fib',
+  users: {
+    label: 'Team',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="5" x2="21" y2="5" />
-        <line x1="3" y1="9" x2="21" y2="9" />
-        <line x1="3" y1="13" x2="21" y2="13" />
-        <line x1="3" y1="19" x2="21" y2="19" />
-        <circle cx="17" cy="9" r="1.5" fill="currentColor" />
-        <circle cx="8" cy="13" r="1.5" fill="currentColor" />
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
   },
-  technical_indicators: {
-    label: 'Ind',
+  presentation: {
+    label: 'Meeting',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 12c2-4 5-4 7 0s5 4 7 0 5-4 6 0" />
-        <path d="M2 16c3-2 6-2 8 0s5 2 8 0" />
-        <line x1="2" y1="20" x2="22" y2="20" />
+        <path d="M2 3h20" />
+        <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" />
+        <path d="m7 21 5-5 5 5" />
       </svg>
     ),
   },
-  economic_calendar: {
+  invoice: {
+    label: 'Invoice',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+  },
+  file_text: {
+    label: 'Doc',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+        <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+        <path d="M10 9H8" />
+        <path d="M16 13H8" />
+        <path d="M16 17H8" />
+      </svg>
+    ),
+  },
+  target: {
+    label: 'Target',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+  },
+  growth: {
+    label: 'Growth',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+      </svg>
+    ),
+  },
+  megaphone: {
+    label: 'Market',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m3 11 18-5v12L3 13v-2z" />
+        <path d="M11.6 16.8 a3 3 0 1 1-5.8-1.6" />
+      </svg>
+    ),
+  },
+
+  // --- Everyday To-Do Life Icons ---
+  home: {
+    label: 'Home',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    ),
+  },
+  shopping_cart: {
+    label: 'Shopping',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="8" cy="21" r="1" />
+        <circle cx="19" cy="21" r="1" />
+        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+      </svg>
+    ),
+  },
+  heart: {
+    label: 'Health',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      </svg>
+    ),
+  },
+  coffee: {
+    label: 'Coffee',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z" />
+        <line x1="6" y1="1" x2="6" y2="4" />
+        <line x1="10" y1="1" x2="10" y2="4" />
+        <line x1="14" y1="1" x2="14" y2="4" />
+      </svg>
+    ),
+  },
+  calendar: {
     label: 'Calendar',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -105,265 +197,260 @@ const ICON_LIBRARY: Record<string, { label: string; svg: React.ReactNode }> = {
         <line x1="16" y1="2" x2="16" y2="6" />
         <line x1="8" y1="2" x2="8" y2="6" />
         <line x1="3" y1="10" x2="21" y2="10" />
-        <path d="M12 13v4" />
-        <circle cx="12" cy="17" r="0.5" fill="currentColor" />
       </svg>
     ),
   },
-
-  // --- 2. Risk Management ---
-  risk_calc: {
-    label: 'Pos Size',
+  bell: {
+    label: 'Alerts',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    ),
+  },
+  utensils: {
+    label: 'Meals',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-        <line x1="8" y1="7" x2="16" y2="7" />
-        <circle cx="8" cy="12" r="1" fill="currentColor" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
-        <circle cx="16" cy="12" r="1" fill="currentColor" />
-        <circle cx="8" cy="16" r="1" fill="currentColor" />
-        <circle cx="12" cy="16" r="1" fill="currentColor" />
-        <circle cx="16" cy="16" r="1" fill="currentColor" />
+        <path d="M18 2v20" />
+        <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+        <path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2" />
+        <path d="M7 2v20" />
       </svg>
     ),
   },
-  stop_loss: {
-    label: 'Stop Loss',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        <line x1="8" y1="12" x2="16" y2="12" />
-      </svg>
-    ),
-  },
-  take_profit: {
-    label: 'Take Prof',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-        <line x1="4" y1="22" x2="4" y2="15" />
-        <line x1="12" y1="8" x2="16" y2="8" />
-        <line x1="14" y1="6" x2="14" y2="10" />
-      </svg>
-    ),
-  },
-  risk_reward: {
-    label: 'R:R',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3v18" />
-        <path d="M5 8h14" />
-        <path d="M3 13l2-5 2 5a2 2 0 0 1-4 0z" />
-        <path d="M17 13l2-5 2 5a2 2 0 0 1-4 0z" />
-        <path d="M8 21h8" />
-      </svg>
-    ),
-  },
-  drawdown_guard: {
-    label: 'Drawdown',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
-        <path d="M12 6v6l4 2" />
-        <line x1="8" y1="16" x2="16" y2="8" />
-      </svg>
-    ),
-  },
-
-  // --- 3. Trading Psychology ---
-  trading_mindset: {
-    label: 'Mindset',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2a5 5 0 0 0-5 5c0 2 1 3.5 2.5 4.5A5 5 0 0 0 7 17a5 5 0 0 0 10 0 5 5 0 0 0-2.5-5.5C16 10.5 17 9 17 7a5 5 0 0 0-5-5z" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-      </svg>
-    ),
-  },
-  discipline_lock: {
-    label: 'Lock',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="11" width="14" height="10" rx="2" />
-        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-        <circle cx="12" cy="16" r="1" fill="currentColor" />
-      </svg>
-    ),
-  },
-  fomo_guard: {
-    label: 'FOMO',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-      </svg>
-    ),
-  },
-  patience_clock: {
-    label: 'Patience',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 22h14" />
-        <path d="M5 2h14" />
-        <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L13.414 13.414a2 2 0 0 1 0-2.828l3-3A2 2 0 0 0 17 6.172V2" />
-        <path d="M7 22v-4.172a2 2 0 0 1 .586-1.414l3-3a2 2 0 0 0 0-2.828l-3-3A2 2 0 0 1 7 6.172V2" />
-      </svg>
-    ),
-  },
-
-  // --- 4. Trading Strategy ---
-  breakout_pattern: {
-    label: 'Breakout',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="8" x2="21" y2="8" strokeDasharray="3 3" />
-        <polyline points="4 18 10 12 14 15 20 5" />
-        <polyline points="15 5 20 5 20 10" />
-      </svg>
-    ),
-  },
-  support_resistance: {
-    label: 'S/R',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="5" x2="21" y2="5" />
-        <line x1="3" y1="19" x2="21" y2="19" />
-        <polyline points="4 15 8 9 12 15 16 9 20 15" />
-      </svg>
-    ),
-  },
-  smart_money: {
-    label: 'SMC',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 17l6-6 4 4 8-8" />
-        <polyline points="14 7 21 7 21 14" />
-        <circle cx="9" cy="11" r="1.5" fill="currentColor" />
-        <circle cx="13" cy="15" r="1.5" fill="currentColor" />
-      </svg>
-    ),
-  },
-  supply_demand: {
-    label: 'Sup/Dem',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="5" rx="1" />
-        <rect x="3" y="16" width="18" height="5" rx="1" />
-        <polyline points="6 14 10 10 14 12 18 8" />
-      </svg>
-    ),
-  },
-  chart_pattern: {
-    label: 'Pattern',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 18l4-6 3 3 3-9 3 9 3-3 4 6" />
-        <line x1="2" y1="18" x2="22" y2="18" />
-      </svg>
-    ),
-  },
-
-  // --- 5. Trade Execution ---
-  buy_order: {
-    label: 'Buy',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="4" width="18" height="16" rx="2" />
-        <polyline points="8 12 12 8 16 12" />
-        <line x1="12" y1="8" x2="12" y2="16" />
-      </svg>
-    ),
-  },
-  sell_order: {
-    label: 'Sell',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="4" width="18" height="16" rx="2" />
-        <polyline points="8 12 12 16 16 12" />
-        <line x1="12" y1="8" x2="12" y2="16" />
-      </svg>
-    ),
-  },
-  instant_execution: {
-    label: 'Exec',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <polygon points="13 4 7 13 12 13 11 20 17 11 12 11 13 4" fill="currentColor" fillOpacity="0.2" />
-      </svg>
-    ),
-  },
-  pending_order: {
-    label: 'Pending',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="8" />
-        <polyline points="12 8 12 12 15 14" />
-        <line x1="2" y1="12" x2="4" y2="12" />
-        <line x1="20" y1="12" x2="22" y2="12" />
-      </svg>
-    ),
-  },
-
-  // --- 6. Trade Management ---
-  breakeven: {
-    label: 'BE',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="2" y1="12" x2="22" y2="12" />
-        <rect x="9" y="8" width="6" height="8" rx="1" />
-        <path d="M10 8V6a2 2 0 0 1 4 0v2" />
-      </svg>
-    ),
-  },
-  partial_close: {
-    label: 'Partials',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
-        <path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor" fillOpacity="0.2" />
-      </svg>
-    ),
-  },
-  trailing_stop: {
-    label: 'Trail SL',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 17 8 17 8 12 13 12 13 7 18 7 18 2" />
-        <polyline points="3 21 21 21" />
-      </svg>
-    ),
-  },
-
-  // --- 7. Trade Review & Journaling ---
-  trade_journal: {
-    label: 'Journal',
+  book: {
+    label: 'Reading',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        <line x1="9" y1="7" x2="15" y2="7" />
-        <line x1="9" y1="11" x2="15" y2="11" />
       </svg>
     ),
   },
-  win_rate_stats: {
-    label: 'Win Rate',
+  smile: {
+    label: 'Personal',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10" />
-        <line x1="12" y1="20" x2="12" y2="4" />
-        <line x1="6" y1="20" x2="6" y2="14" />
-        <polyline points="2 20 22 20" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
       </svg>
     ),
   },
-  trade_replay: {
-    label: 'Replay',
+  clock: {
+    label: 'Clock',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 15.5 15.5" />
+      </svg>
+    ),
+  },
+  sparkles: {
+    label: 'Chores',
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" fillOpacity="0.2" />
-        <path d="M19 5v14" />
+        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+      </svg>
+    ),
+  },
+  map_pin: {
+    label: 'Errands',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+        <circle cx="12" cy="10" r="3" />
+      </svg>
+    ),
+  },
+  checklist: {
+    label: 'Tasks',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="9" y1="11" x2="21" y2="11" />
+        <line x1="9" y1="17" x2="21" y2="17" />
+        <line x1="9" y1="5" x2="21" y2="5" />
+        <polyline points="4 11 2 13 4 15" />
+        <polyline points="4 5 2 7 4 9" />
+      </svg>
+    ),
+  },
+
+  // --- PC & Workstation Icons ---
+  laptop: {
+    label: 'PC / Laptop',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="12" rx="2" />
+        <line x1="2" y1="20" x2="22" y2="20" />
+      </svg>
+    ),
+  },
+  monitor: {
+    label: 'Desktop',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+  },
+  terminal: {
+    label: 'Terminal',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="4 17 10 11 4 5" />
+        <line x1="12" y1="19" x2="20" y2="19" />
+      </svg>
+    ),
+  },
+  cpu: {
+    label: 'Hardware',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <rect x="9" y="9" width="6" height="6" />
+        <line x1="9" y1="1" x2="9" y2="4" />
+        <line x1="15" y1="1" x2="15" y2="4" />
+        <line x1="9" y1="20" x2="9" y2="23" />
+        <line x1="15" y1="20" x2="15" y2="23" />
+        <line x1="20" y1="9" x2="23" y2="9" />
+        <line x1="20" y1="15" x2="23" y2="15" />
+        <line x1="1" y1="9" x2="4" y2="9" />
+        <line x1="1" y1="15" x2="4" y2="15" />
+      </svg>
+    ),
+  },
+  folder: {
+    label: 'Files',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  wifi: {
+    label: 'Network',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 13a10 10 0 0 1 14 0" />
+        <path d="M8.5 16.5a5 5 0 0 1 7 0" />
+        <line x1="12" y1="20" x2="12.01" y2="20" />
+      </svg>
+    ),
+  },
+  database: {
+    label: 'Database',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+      </svg>
+    ),
+  },
+  download: {
+    label: 'Downloads',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    ),
+  },
+  gamepad: {
+    label: 'Gaming',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="6" y1="12" x2="10" y2="12" />
+        <line x1="8" y1="10" x2="8" y2="14" />
+        <circle cx="15" cy="13" r="1" />
+        <circle cx="18" cy="11" r="1" />
+        <rect x="2" y="6" width="20" height="12" rx="6" />
+      </svg>
+    ),
+  },
+  shield: {
+    label: 'DND',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    ),
+  },
+  wrench: {
+    label: 'Setup',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+      </svg>
+    ),
+  },
+
+  // --- Utility & Extra Icons ---
+  lock: {
+    label: 'Lock',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
+  star: {
+    label: 'Star',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ),
+  },
+  flag: {
+    label: 'Flag',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+        <line x1="4" y1="22" x2="4" y2="15" />
+      </svg>
+    ),
+  },
+  bookmark: {
+    label: 'Saves',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  layers: {
+    label: 'Layers',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+        <polyline points="2 17 12 22 22 17" />
+        <polyline points="2 12 12 17 22 12" />
+      </svg>
+    ),
+  },
+  settings: {
+    label: 'Config',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    ),
+  },
+  fire: {
+    label: 'Hot',
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
       </svg>
     ),
   },
@@ -399,6 +486,7 @@ interface ModeDetail {
   defaultAccent: string;
   defaultSoft: string;
   options: string[];
+  baseOptions?: string[];
 }
 
 const isVideoUrl = (url: string): boolean => {
@@ -418,69 +506,49 @@ const isVideoUrl = (url: string): boolean => {
 
 const DEFAULT_MODES: Record<string, ModeDetail> = {
   business: {
-    title: 'Market Analysis',
+    title: 'Business',
     accent: 'rgba(30, 140, 255, 0.9)',
     soft: 'rgba(60, 170, 255, 0.18)',
     defaultAccent: 'rgba(30, 140, 255, 0.9)',
     defaultSoft: 'rgba(60, 170, 255, 0.18)',
-    options: [
-      'Analyze higher timeframe (D1/H4) trend',
-      'Mark key Support & Resistance / Liquidity zones',
-      'Check Economic Calendar for high-impact news',
-      'Identify market structure (BOS / CHoCH)',
-    ],
+    options: ['Review client proposals', 'Team sync & project status', 'Approve pending invoices', 'Quarterly goal check-in'],
+    baseOptions: ['Review client proposals', 'Team sync & project status', 'Approve pending invoices', 'Quarterly goal check-in'],
   },
   life: {
-    title: 'Risk Management',
+    title: 'Everyday Life',
     accent: 'rgba(0, 190, 80, 0.9)',
     soft: 'rgba(0, 230, 100, 0.16)',
     defaultAccent: 'rgba(0, 190, 80, 0.9)',
     defaultSoft: 'rgba(0, 230, 100, 0.16)',
-    options: [
-      'Calculate max risk per trade (1% - 2%)',
-      'Set precise Stop Loss price before entry',
-      'Verify Risk-to-Reward ratio (min 1:2)',
-      'Confirm total account margin & lot size',
-    ],
+    options: ['Morning coffee & planning', 'Grocery list & errands', '30 min workout or walk', 'Evening downtime & book'],
+    baseOptions: ['Morning coffee & planning', 'Grocery list & errands', '30 min workout or walk', 'Evening downtime & book'],
   },
   pc: {
-    title: 'Trading Strategy',
+    title: 'PC & Workstation',
     accent: 'rgba(140, 0, 225, 0.9)',
     soft: 'rgba(170, 0, 255, 0.16)',
     defaultAccent: 'rgba(140, 0, 225, 0.9)',
     defaultSoft: 'rgba(170, 0, 255, 0.16)',
-    options: [
-      'Wait for clear setup at Key Zone / Order Block',
-      'Confirm lower timeframe entry trigger (M15/M5)',
-      'Check confluence indicators (RSI, MA, Volume)',
-      'Avoid trading inside low-liquidity chop',
-    ],
+    options: ['Clean desktop & downloads', 'System & security updates', 'Backup important files', 'Organize workspace tabs'],
+    baseOptions: ['Clean desktop & downloads', 'System & security updates', 'Backup important files', 'Organize workspace tabs'],
   },
   sync: {
-    title: 'Trade Execution',
+    title: 'Focus & DND',
     accent: 'rgba(215, 25, 75, 0.9)',
     soft: 'rgba(255, 40, 100, 0.16)',
     defaultAccent: 'rgba(215, 25, 75, 0.9)',
     defaultSoft: 'rgba(255, 40, 100, 0.16)',
-    options: [
-      'Place Buy/Sell Order with preset SL & TP',
-      'Move Stop Loss to Break-Even at 1:1 R:R',
-      'Take partial profits at key target levels',
-      'Let winning trade run to final Take Profit',
-    ],
+    options: ['Deep work block', 'Mute phone & chat alerts', 'Close distraction tabs', 'Single-task until finished'],
+    baseOptions: ['Deep work block', 'Mute phone & chat alerts', 'Close distraction tabs', 'Single-task until finished'],
   },
   alerts: {
-    title: 'Review & Journaling',
+    title: 'Daily Schedule',
     accent: 'rgba(220, 100, 0, 0.9)',
     soft: 'rgba(255, 140, 0, 0.18)',
     defaultAccent: 'rgba(220, 100, 0, 0.9)',
     defaultSoft: 'rgba(255, 140, 0, 0.18)',
-    options: [
-      'Screenshot chart before and after trade',
-      'Log entry, exit, lot size, and PnL in Journal',
-      'Review trade execution against rules & mindset',
-      'Rate psychological discipline (1 - 5 stars)',
-    ],
+    options: ["Check today's calendar", 'Review top 3 priorities', 'Follow up on key emails', 'End-of-day summary'],
+    baseOptions: ["Check today's calendar", 'Review top 3 priorities', 'Follow up on key emails', 'End-of-day summary'],
   },
 };
 
@@ -568,27 +636,14 @@ export default function App() {
     }
   });
 
-  const [moveCheckedToBottom, setMoveCheckedToBottom] = useState<boolean>(() => {
+  const [autoMoveCompleted, setAutoMoveCompleted] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('fm_move_checked_bottom');
+      const saved = localStorage.getItem('fm_auto_move_completed');
       return saved !== 'false';
     } catch (e) {
       return true;
     }
   });
-
-  const [isChecklistScrolling, setIsChecklistScrolling] = useState(false);
-  const checklistScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleChecklistScroll = () => {
-    setIsChecklistScrolling(true);
-    if (checklistScrollTimeoutRef.current) {
-      clearTimeout(checklistScrollTimeoutRef.current);
-    }
-    checklistScrollTimeoutRef.current = setTimeout(() => {
-      setIsChecklistScrolling(false);
-    }, 800);
-  };
 
   const handleShowCountdownChange = (val: boolean) => {
     setShowCountdown(val);
@@ -612,9 +667,35 @@ export default function App() {
     localStorage.setItem('fm_animate_minimized_text', String(val));
   };
 
-  const handleMoveCheckedToBottomChange = (val: boolean) => {
-    setMoveCheckedToBottom(val);
-    localStorage.setItem('fm_move_checked_bottom', String(val));
+  const handleAutoMoveCompletedChange = (val: boolean) => {
+    setAutoMoveCompleted(val);
+    localStorage.setItem('fm_auto_move_completed', String(val));
+    if (val && currentMode && modes[currentMode]) {
+      const currentOptions = modes[currentMode].options || [];
+      const activeSel = selections[currentMode] || [];
+      if (currentOptions.length > 0 && activeSel.length > 0) {
+        const uncheckedIdxs = currentOptions.map((_, i) => i).filter((i) => !activeSel.includes(i));
+        const checkedIdxs = currentOptions.map((_, i) => i).filter((i) => activeSel.includes(i));
+        const finalOrderIdxs = [...uncheckedIdxs, ...checkedIdxs];
+
+        const newOptions = finalOrderIdxs.map((i) => currentOptions[i]);
+        const newSel = Array.from({ length: checkedIdxs.length }, (_, i) => uncheckedIdxs.length + i);
+
+        const updatedModes = {
+          ...modes,
+          [currentMode]: {
+            ...modes[currentMode],
+            options: newOptions,
+          },
+        };
+        setModes(updatedModes);
+        localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+
+        const nextSelections = { ...selections, [currentMode]: newSel };
+        setSelections(nextSelections);
+        localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(newSel));
+      }
+    }
   };
 
   const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(() => {
@@ -626,6 +707,27 @@ export default function App() {
     }
   });
 
+  const [isScrolling, setIsScrolling] = useState<boolean>(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleScrollAreaScroll = () => {
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!animationsEnabled) {
       document.body.classList.add('animations-disabled');
@@ -633,6 +735,182 @@ export default function App() {
       document.body.classList.remove('animations-disabled');
     }
   }, [animationsEnabled]);
+
+  // ── Task Reminders & Calendar State ──
+  const [startOnBoot, setStartOnBoot] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('fm_start_on_boot');
+      return saved !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [showAutostartGuideModal, setShowAutostartGuideModal] = useState<boolean>(false);
+
+  const handleToggleStartOnBoot = (val: boolean) => {
+    setStartOnBoot(val);
+    localStorage.setItem('fm_start_on_boot', String(val));
+    if (val) {
+      setShowAutostartGuideModal(true);
+    }
+  };
+
+  const downloadWindowsAutostartBat = () => {
+    const currentUrl = window.location.href;
+    const batContent = `@echo off
+:: OverDesk Auto-Start Script for Windows Startup
+:: Place this file in your Windows Startup Folder (press Win+R -> type shell:startup -> press Enter)
+title Launching OverDesk...
+start "" "${currentUrl}"
+`;
+    const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'OverDesk-AutoStart.bat';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const [taskReminders, setTaskReminders] = useState<Record<string, TaskReminder>>(() => {
+    try {
+      const saved = localStorage.getItem('fm_task_reminders');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [taskAlarmsEnabled, setTaskAlarmsEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('fm_task_alarms_enabled');
+      return saved !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const [activeCalendarTask, setActiveCalendarTask] = useState<{ modeKey: string; taskText: string; taskIdx: number } | null>(null);
+  const [activeAlarmModal, setActiveAlarmModal] = useState<TaskReminder | null>(null);
+
+  const handleToggleTaskAlarmsEnabled = (val: boolean) => {
+    setTaskAlarmsEnabled(val);
+    localStorage.setItem('fm_task_alarms_enabled', String(val));
+  };
+
+  const handleSaveTaskReminder = (reminderData: Omit<TaskReminder, 'id'>) => {
+    const remKey = `${reminderData.modeKey}_${reminderData.taskIdx}`;
+    const newRem: TaskReminder = {
+      ...reminderData,
+      id: remKey,
+    };
+    const updated = {
+      ...taskReminders,
+      [remKey]: newRem,
+    };
+    setTaskReminders(updated);
+    localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
+  };
+
+  const handleDeleteTaskReminder = (taskIdx: number, mKey?: string) => {
+    const targetMode = mKey || activeCalendarTask?.modeKey;
+    if (!targetMode) return;
+    const remKey = `${targetMode}_${taskIdx}`;
+    const updated = { ...taskReminders };
+    delete updated[remKey];
+    setTaskReminders(updated);
+    localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
+  };
+
+  const handleDeleteAllTaskReminders = () => {
+    setTaskReminders({});
+    localStorage.setItem('fm_task_reminders', JSON.stringify({}));
+  };
+
+  const markTaskDoneFromAlarm = (modeKey: string, taskText: string) => {
+    if (!modes[modeKey]) return;
+    const currentOptions = modes[modeKey].options || [];
+    let idx = currentOptions.findIndex((opt) => opt === taskText);
+    if (idx === -1) return;
+
+    setSelections((prevSelMap) => {
+      const activeList = prevSelMap[modeKey] || [];
+      if (activeList.includes(idx)) {
+        return prevSelMap; // Already checked
+      }
+
+      const updated = [...activeList, idx];
+      playSoundChime('check');
+
+      if (autoMoveCompleted) {
+        const uncheckedIdxs = currentOptions.map((_, i) => i).filter((i) => !updated.includes(i));
+        const checkedIdxs = currentOptions.map((_, i) => i).filter((i) => updated.includes(i));
+
+        const otherChecked = checkedIdxs.filter((i) => i !== idx);
+        const finalCheckedIdxs = [...otherChecked, idx];
+
+        const finalOrderIdxs = [...uncheckedIdxs, ...finalCheckedIdxs];
+        const newOptions = finalOrderIdxs.map((i) => currentOptions[i]);
+        const newSelIndices = Array.from({ length: finalCheckedIdxs.length }, (_, i) => uncheckedIdxs.length + i);
+
+        setModes((prevModes) => {
+          const updatedModes = {
+            ...prevModes,
+            [modeKey]: {
+              ...prevModes[modeKey],
+              options: newOptions,
+            },
+          };
+          localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+          return updatedModes;
+        });
+
+        const nextSelMap = { ...prevSelMap, [modeKey]: newSelIndices };
+        localStorage.setItem('fm_sel_' + modeKey, JSON.stringify(newSelIndices));
+        return nextSelMap;
+      } else {
+        const nextSelMap = { ...prevSelMap, [modeKey]: updated };
+        localStorage.setItem('fm_sel_' + modeKey, JSON.stringify(updated));
+        return nextSelMap;
+      }
+    });
+  };
+
+  // Alarm trigger interval checking (checks every 1 second)
+  useEffect(() => {
+    if (!taskAlarmsEnabled) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const curYMD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const curTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      Object.entries(taskReminders).forEach(([remKey, remValue]) => {
+        const rem = remValue as TaskReminder;
+        if (rem.enabled && !rem.triggered && rem.date === curYMD && rem.time === curTime) {
+          playModernChime(); // Rings 3 times
+          setActiveAlarmModal(rem);
+
+          // Mark task done and move down if autoMoveCompleted is enabled
+          markTaskDoneFromAlarm(rem.modeKey, rem.taskText);
+
+          setTaskReminders((prev) => {
+            const next = {
+              ...prev,
+              [remKey]: { ...(prev[remKey] as TaskReminder), triggered: true },
+            };
+            localStorage.setItem('fm_task_reminders', JSON.stringify(next));
+            return next;
+          });
+        }
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [taskAlarmsEnabled, taskReminders, autoMoveCompleted]);
 
   const handleAnimationsEnabledChange = (val: boolean) => {
     setAnimationsEnabled(val);
@@ -643,9 +921,9 @@ export default function App() {
   const [wallpaperUrl, setWallpaperUrl] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('fm_wallpaper_url');
-      return saved !== null ? saved : wallpaperFocusGoku;
+      return saved !== null ? saved : wallpaperExecutiveArt;
     } catch (e) {
-      return wallpaperFocusGoku;
+      return wallpaperExecutiveArt;
     }
   });
 
@@ -737,7 +1015,7 @@ export default function App() {
       return updated;
     });
     if (wallpaperUrl === urlToDelete) {
-      handleWallpaperUrlChange(wallpaperFocusGoku);
+      handleWallpaperUrlChange(wallpaperExecutiveArt);
     }
   };
 
@@ -1081,11 +1359,11 @@ export default function App() {
 
     setModes(JSON.parse(JSON.stringify(DEFAULT_MODES)));
     setIconAssignments({
-      business: 'candlestick',
-      life: 'stop_loss',
-      pc: 'smart_money',
-      sync: 'instant_execution',
-      alerts: 'trade_journal',
+      business: 'briefcase',
+      life: 'coffee',
+      pc: 'pc',
+      sync: 'sync',
+      alerts: 'bell',
     });
     setCustomIcons({});
     setCurrentMode('business');
@@ -1099,9 +1377,9 @@ export default function App() {
     setIsTimerRunning(false);
     setAlarmEnabled(true);
     setAnimateMinimizedText(true);
+    setAutoMoveCompleted(true);
     setAnimationsEnabled(true);
-    setMoveCheckedToBottom(true);
-    setWallpaperUrl(wallpaperFocusGoku);
+    setWallpaperUrl(wallpaperExecutiveArt);
     setCustomWallpapers([]);
     setWallpaperOpacity(60);
     setResetConfirming(false);
@@ -1189,7 +1467,7 @@ export default function App() {
   const [modes, setModes] = useState<Record<string, ModeDetail>>(() => {
     try {
       const ver = localStorage.getItem('fm_state_ver');
-      if (ver === '5.0') {
+      if (ver === '4.0') {
         const saved = localStorage.getItem('fm_modes');
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -1197,13 +1475,16 @@ export default function App() {
             const mergedObj: Record<string, ModeDetail> = {};
             Object.keys(parsed).forEach((k) => {
               const def = DEFAULT_MODES[k];
+              const opts = Array.isArray(parsed[k]?.options) && parsed[k].options.length > 0 ? parsed[k].options : (def?.options || []);
+              const baseOpts = Array.isArray(parsed[k]?.baseOptions) && parsed[k].baseOptions.length > 0 ? parsed[k].baseOptions : (def?.baseOptions || [...opts]);
               mergedObj[k] = {
                 title: parsed[k]?.title || def?.title || k,
                 accent: parsed[k]?.accent || def?.accent || 'rgba(30, 140, 255, 0.9)',
                 soft: parsed[k]?.soft || def?.soft || 'rgba(60, 170, 255, 0.18)',
                 defaultAccent: parsed[k]?.defaultAccent || def?.defaultAccent || 'rgba(30, 140, 255, 0.9)',
                 defaultSoft: parsed[k]?.defaultSoft || def?.defaultSoft || 'rgba(60, 170, 255, 0.18)',
-                options: Array.isArray(parsed[k]?.options) && parsed[k].options.length > 0 ? parsed[k].options : (def?.options || []),
+                options: opts,
+                baseOptions: baseOpts,
               };
             });
             if (Object.keys(mergedObj).length > 0) return mergedObj;
@@ -1236,7 +1517,7 @@ export default function App() {
   const [iconAssignments, setIconAssignments] = useState<Record<string, string>>(() => {
     try {
       const ver = localStorage.getItem('fm_state_ver');
-      if (ver === '5.0') {
+      if (ver === '4.0') {
         const saved = localStorage.getItem('fm_icons');
         if (saved) {
           return JSON.parse(saved);
@@ -1244,11 +1525,11 @@ export default function App() {
       }
     } catch (e) {}
     return {
-      business: 'candlestick',
-      life: 'stop_loss',
-      pc: 'smart_money',
-      sync: 'instant_execution',
-      alerts: 'trade_journal',
+      business: 'briefcase',
+      life: 'home',
+      pc: 'laptop',
+      sync: 'shield',
+      alerts: 'calendar',
     };
   });
 
@@ -1276,6 +1557,18 @@ export default function App() {
     return 1.0;
   });
 
+  // Card Vertical Extension Extra Height (Max +50% base length down, 0 minimum)
+  const [extraHeight, setExtraHeight] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('fm_extra_height');
+      if (saved) {
+        const parsed = parseFloat(saved);
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
+      }
+    } catch (e) {}
+    return 0;
+  });
+
   // Customizer picker state
   const [pickerOpen, setPickerOpen] = useState<boolean>(false);
   const [pickerTargetMode, setPickerTargetMode] = useState<string | null>(null);
@@ -1286,86 +1579,6 @@ export default function App() {
   const [titleInputValue, setTitleInputValue] = useState<string>('');
   const [editingItemIdx, setEditingItemIdx] = useState<number | null>(null);
   const [editingItemValue, setEditingItemValue] = useState<string>('');
-
-  // ── Bottom Vertical Extension Drag States & Logic ──
-  const [userDraggedExtension, setUserDraggedExtension] = useState<number>(0);
-  const [isResizingHeight, setIsResizingHeight] = useState<boolean>(false);
-  const optionsListRef = useRef<HTMLUListElement>(null);
-  const [optionsContentHeight, setOptionsContentHeight] = useState<number>(0);
-  const baseCardHeightRef = useRef<number>(380);
-
-  useEffect(() => {
-    const updateContentHeight = () => {
-      if (optionsListRef.current) {
-        setOptionsContentHeight(optionsListRef.current.scrollHeight);
-      }
-    };
-    updateContentHeight();
-    const timer = setTimeout(updateContentHeight, 60);
-    return () => clearTimeout(timer);
-  }, [modes, currentMode, selections, editMode, minimized]);
-
-  // Base scroll area height constant
-  const baseScrollAreaHeight = 176;
-
-  // Unextended base card height (default ~380)
-  const unextendedBaseH = baseCardHeightRef.current || 380;
-  // Maximum extension allowed is 0.5 (50%) of previous/base size
-  const maxAllowedExt = Math.round(unextendedBaseH * 0.5);
-
-  // App ONLY extends when user explicitly drags down (userDraggedExtension > 0), up to 0.5 of base size
-  const appliedExtension = Math.max(0, Math.min(userDraggedExtension, maxAllowedExt));
-
-  const handleBottomResizePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const targetEl = e.currentTarget as HTMLElement;
-    try {
-      targetEl.setPointerCapture(e.pointerId);
-    } catch {}
-
-    setIsResizingHeight(true);
-    const startY = e.clientY;
-    const startExt = userDraggedExtension;
-
-    if (cardRef.current) {
-      const currentTotalH = cardRef.current.offsetHeight;
-      const measuredBaseH = currentTotalH - appliedExtension;
-      if (measuredBaseH > 100) {
-        baseCardHeightRef.current = measuredBaseH;
-      }
-    }
-
-    const onPointerMove = (moveEv: PointerEvent) => {
-      const dy = (moveEv.clientY - startY) / (scale || 1);
-      let nextExt = startExt + dy;
-
-      const baseH = baseCardHeightRef.current || 380;
-      const currentMaxExt = Math.round(baseH * 0.5); // Max 0.5 of previous size
-
-      // Must not go below previous size (min 0) and max 0.5 of previous size
-      nextExt = Math.max(0, Math.min(currentMaxExt, nextExt));
-
-      const rounded = Math.round(nextExt);
-      setUserDraggedExtension(rounded);
-      localStorage.setItem('fm_vertical_extension', String(rounded));
-    };
-
-    const onPointerUp = (upEv: PointerEvent) => {
-      try {
-        targetEl.releasePointerCapture(upEv.pointerId);
-      } catch {}
-      setIsResizingHeight(false);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
-    };
-
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerUp);
-  };
 
   // Mode completion water splash state
   const [completedSplashMode, setCompletedSplashMode] = useState<string | null>(null);
@@ -1636,13 +1849,13 @@ export default function App() {
   useEffect(() => {
     // Clear stale old states if any config mismatch from legacy assets
     const ver = localStorage.getItem('fm_state_ver');
-    if (ver !== '5.1') {
+    if (ver !== '4.0') {
       localStorage.removeItem('fm_modes');
       localStorage.removeItem('fm_theme');
       localStorage.removeItem('fm_scale');
       localStorage.removeItem('fm_icons');
       Object.keys(DEFAULT_MODES).forEach((m) => localStorage.removeItem('fm_sel_' + m));
-      localStorage.setItem('fm_state_ver', '5.1');
+      localStorage.setItem('fm_state_ver', '4.0');
       setModes(DEFAULT_MODES);
       setSelections({
         business: [],
@@ -1652,11 +1865,11 @@ export default function App() {
         alerts: [],
       });
       setIconAssignments({
-        business: 'candlestick',
-        life: 'stop_loss',
-        pc: 'smart_money',
-        sync: 'instant_execution',
-        alerts: 'trade_journal',
+        business: 'briefcase',
+        life: 'home',
+        pc: 'laptop',
+        sync: 'shield',
+        alerts: 'calendar',
       });
       setCurrentMode('business');
     }
@@ -1719,6 +1932,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('fm_scale', scale.toString());
   }, [scale]);
+
+  useEffect(() => {
+    localStorage.setItem('fm_extra_height', extraHeight.toString());
+  }, [extraHeight]);
 
   useEffect(() => {
     localStorage.setItem('fm_translate', JSON.stringify(translate));
@@ -1852,7 +2069,76 @@ export default function App() {
 
   // ── Programmatic Scaling Configurations ──
   const sizingRef = useRef({ dragging: false, startX: 0, startScale: 1.0 });
-  const handleSizingMouseDown = () => {};
+  const handleSizingMouseDown = (e: React.MouseEvent | React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    sizingRef.current = { dragging: true, startX: e.clientX, startScale: scale };
+    if (window.electronAPI) {
+      window.electronAPI.scaleStart();
+    }
+
+    const handlePointerMove = (moveEvt: MouseEvent | PointerEvent) => {
+      if (!sizingRef.current.dragging) return;
+      const deltaX = moveEvt.clientX - sizingRef.current.startX;
+      let newScale = sizingRef.current.startScale + (deltaX / 180);
+      newScale = Math.max(0.4, Math.min(2.0, Math.round(newScale * 100) / 100));
+      setScale(newScale);
+    };
+
+    const handlePointerUp = () => {
+      if (sizingRef.current.dragging) {
+        sizingRef.current.dragging = false;
+        if (window.electronAPI) {
+          window.electronAPI.scaleEnd(scale);
+        }
+      }
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  const bottomSizingRef = useRef({ dragging: false, startY: 0, startExtra: 0 });
+
+  const handleBottomSizingMouseDown = (e: React.MouseEvent | React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Base card height without current extra extension
+    const currentCardH = cardRef.current ? cardRef.current.offsetHeight : 360;
+    const baseCardH = currentCardH - extraHeight;
+    // Max extension allowed is 0.5 (50%) of base card length
+    const maxAllowedExtra = Math.round(baseCardH * 0.5);
+
+    bottomSizingRef.current = { dragging: true, startY: e.clientY, startExtra: extraHeight };
+    if (window.electronAPI) {
+      window.electronAPI.scaleStart();
+    }
+
+    const handlePointerMove = (moveEvt: MouseEvent | PointerEvent) => {
+      if (!bottomSizingRef.current.dragging) return;
+      const deltaY = (moveEvt.clientY - bottomSizingRef.current.startY) / scale;
+      let newExtra = bottomSizingRef.current.startExtra + deltaY;
+      newExtra = Math.max(0, Math.min(maxAllowedExtra, Math.round(newExtra)));
+      setExtraHeight(newExtra);
+    };
+
+    const handlePointerUp = () => {
+      if (bottomSizingRef.current.dragging) {
+        bottomSizingRef.current.dragging = false;
+        if (window.electronAPI) {
+          window.electronAPI.scaleEnd(scale);
+        }
+      }
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
 
   const handleScaleChange = (val: number) => {
     setScale(val);
@@ -1882,7 +2168,7 @@ export default function App() {
       const isOverCard = isInsideRect || cardRef.current.contains(e.target as Node);
       
       // If we are actively resizing, dragging, we must capture mouse events absolutely
-      const forceCapture = isGripped || sizingRef.current?.dragging || isResizingHeight;
+      const forceCapture = isGripped || sizingRef.current?.dragging || bottomSizingRef.current?.dragging;
 
       if (isOverCard || forceCapture) {
         window.electronAPI.setIgnoreMouseEvents(false);
@@ -1898,7 +2184,7 @@ export default function App() {
         window.electronAPI.setIgnoreMouseEvents(false);
       }
     };
-  }, [isGripped, isResizingHeight]);
+  }, [isGripped]);
 
   // ── Gumroad License verification triggering ──
   const handleLicenseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1964,88 +2250,99 @@ export default function App() {
       return;
     }
 
-    const currentOptions = [...(modes[currentMode]?.options || [])];
-    const activeList = [...(selections[currentMode] || [])];
-    const isCurrentlyChecked = activeList.includes(idx);
-
-    let updatedSelections: number[];
-    let updatedOptions = currentOptions;
-
-    if (isCurrentlyChecked) {
-      // Unchecking item
+    let activeList = selections[currentMode] || [];
+    let updated: number[];
+    let isNowChecked = false;
+    if (activeList.includes(idx)) {
+      updated = activeList.filter((v) => v !== idx);
       playSoundChime('check');
-
-      if (moveCheckedToBottom) {
-        const itemText = updatedOptions[idx];
-        updatedOptions.splice(idx, 1);
-
-        const remainingCheckedIndices = activeList.filter((v) => v !== idx);
-        const uncheckedCount = updatedOptions.length - remainingCheckedIndices.length;
-        const insertIdx = Math.max(0, uncheckedCount);
-
-        updatedOptions.splice(insertIdx, 0, itemText);
-
-        updatedSelections = remainingCheckedIndices.map((oldSel) => {
-          let pos = oldSel > idx ? oldSel - 1 : oldSel;
-          if (pos >= insertIdx) pos += 1;
-          return pos;
-        });
-      } else {
-        updatedSelections = activeList.filter((v) => v !== idx);
-      }
     } else {
-      // Checking item
+      updated = [...activeList, idx];
+      isNowChecked = true;
       playSoundChime('check');
-
-      if (moveCheckedToBottom) {
-        const itemText = updatedOptions[idx];
-        updatedOptions.splice(idx, 1);
-        updatedOptions.push(itemText);
-        const newIndex = updatedOptions.length - 1;
-
-        updatedSelections = activeList.map((oldSel) => (oldSel > idx ? oldSel - 1 : oldSel));
-        updatedSelections.push(newIndex);
-      } else {
-        updatedSelections = [...activeList, idx];
-      }
-
-      const totalOptionsCount = updatedOptions.length;
-      if (updatedSelections.length === totalOptionsCount && totalOptionsCount > 0) {
+      const totalOptionsCount = modes[currentMode].options.length;
+      if (updated.length === totalOptionsCount && totalOptionsCount > 0) {
         setTimeout(() => playSoundChime('complete'), 150);
         triggerCompletedSplash(currentMode);
       }
     }
 
-    if (moveCheckedToBottom) {
-      setModes((prev) => ({
-        ...prev,
-        [currentMode]: {
-          ...prev[currentMode],
-          options: updatedOptions,
-        },
-      }));
+    if (autoMoveCompleted) {
+      const currentOptions = modes[currentMode]?.options || [];
+      if (currentOptions.length > 0) {
+        const uncheckedIdxs = currentOptions.map((_, i) => i).filter((i) => !updated.includes(i));
+        const checkedIdxs = currentOptions.map((_, i) => i).filter((i) => updated.includes(i));
+
+        let finalCheckedIdxs = checkedIdxs;
+        if (isNowChecked) {
+          const otherChecked = checkedIdxs.filter((i) => i !== idx);
+          finalCheckedIdxs = [...otherChecked, idx];
+        }
+
+        const finalOrderIdxs = [...uncheckedIdxs, ...finalCheckedIdxs];
+        const newOptions = finalOrderIdxs.map((i) => currentOptions[i]);
+        const newSelIndices = Array.from({ length: finalCheckedIdxs.length }, (_, i) => uncheckedIdxs.length + i);
+
+        const currentBase = modes[currentMode]?.baseOptions || currentOptions;
+        const updatedModes = {
+          ...modes,
+          [currentMode]: {
+            ...modes[currentMode],
+            options: newOptions,
+            baseOptions: currentBase,
+          },
+        };
+        setModes(updatedModes);
+        localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+
+        const nextSelections = { ...selections, [currentMode]: newSelIndices };
+        setSelections(nextSelections);
+        localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(newSelIndices));
+        return;
+      }
     }
 
-    const nextSelections = { ...selections, [currentMode]: updatedSelections };
+    const nextSelections = { ...selections, [currentMode]: updated };
     setSelections(nextSelections);
-    localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(updatedSelections));
+    localStorage.setItem('fm_sel_' + currentMode, JSON.stringify(updated));
   };
 
-  // ── Reset entire checklist checked selections ──
+  // ── Reset entire checklist indices ──
   const triggerResetChecklist = () => {
     if (editMode) {
-      // In edit mode - reset all checkboxes of ALL modes
+      // In edit mode - reset all checkboxes of ALL modes to blank empty values and re-arrange options to original order
       const emptyChecklists: Record<string, number[]> = {};
+      const updatedModes = { ...modes };
       Object.keys(modes).forEach((m) => {
         emptyChecklists[m] = [];
         localStorage.setItem('fm_sel_' + m, JSON.stringify([]));
+        const base = modes[m]?.baseOptions || modes[m]?.options || [];
+        updatedModes[m] = {
+          ...modes[m],
+          options: [...base],
+          baseOptions: [...base],
+        };
       });
       setSelections(emptyChecklists);
+      setModes(updatedModes);
+      localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
     } else {
-      // Reset checkboxes of ONLY the selected current mode block
+      // Reset checkboxes of ONLY the selected current mode block and re-arrange options to original order
       const nextSelections = { ...selections, [currentMode]: [] };
       setSelections(nextSelections);
       localStorage.setItem('fm_sel_' + currentMode, JSON.stringify([]));
+
+      const base = modes[currentMode]?.baseOptions || modes[currentMode]?.options || [];
+      const updatedModes = {
+        ...modes,
+        [currentMode]: {
+          ...modes[currentMode],
+          options: [...base],
+          baseOptions: [...base],
+        },
+      };
+      setModes(updatedModes);
+      localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
     }
     playSoundChime('reset');
   };
@@ -2074,17 +2371,29 @@ export default function App() {
   // ── Edit operations: Rename items ──
   const commitItemEditing = (idx: number) => {
     if (editingItemIdx === null) return;
+    const oldVal = modes[currentMode].options[idx];
     const listCopy = [...modes[currentMode].options];
     const finalVal = editingItemValue.trim() || listCopy[idx];
     listCopy[idx] = finalVal;
 
-    setModes((prev) => ({
-      ...prev,
+    const baseCopy = [...(modes[currentMode].baseOptions || modes[currentMode].options)];
+    const baseIdx = baseCopy.indexOf(oldVal);
+    if (baseIdx !== -1) {
+      baseCopy[baseIdx] = finalVal;
+    } else if (idx < baseCopy.length) {
+      baseCopy[idx] = finalVal;
+    }
+
+    const updatedModes = {
+      ...modes,
       [currentMode]: {
-        ...prev[currentMode],
+        ...modes[currentMode],
         options: listCopy,
+        baseOptions: baseCopy,
       },
-    }));
+    };
+    setModes(updatedModes);
+    localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
     setEditingItemIdx(null);
   };
 
@@ -2093,14 +2402,21 @@ export default function App() {
     e.stopPropagation();
     if (modes[currentMode].options.length <= 1) return; // cannot delete of size 1
 
+    const deletedText = modes[currentMode].options[idx];
     const updatedOptions = modes[currentMode].options.filter((_, i) => i !== idx);
-    setModes((prev) => ({
-      ...prev,
+    let updatedBase = (modes[currentMode].baseOptions || modes[currentMode].options).filter((item) => item !== deletedText);
+    if (updatedBase.length === 0) updatedBase = [...updatedOptions];
+
+    const updatedModes = {
+      ...modes,
       [currentMode]: {
-        ...prev[currentMode],
+        ...modes[currentMode],
         options: updatedOptions,
+        baseOptions: updatedBase,
       },
-    }));
+    };
+    setModes(updatedModes);
+    localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
 
     // Re-adjust check offset mappings on item deletion
     const currentChecked = selections[currentMode] || [];
@@ -2119,13 +2435,17 @@ export default function App() {
   // ── Add dynamic item option checklist ──
   const addNewItemOption = () => {
     const listCopy = [...modes[currentMode].options, 'New option'];
-    setModes((prev) => ({
-      ...prev,
+    const baseCopy = [...(modes[currentMode].baseOptions || modes[currentMode].options), 'New option'];
+    const updatedModes = {
+      ...modes,
       [currentMode]: {
-        ...prev[currentMode],
+        ...modes[currentMode],
         options: listCopy,
+        baseOptions: baseCopy,
       },
-    }));
+    };
+    setModes(updatedModes);
+    localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
 
     const nextIdx = listCopy.length - 1;
     setEditingItemIdx(nextIdx);
@@ -2170,6 +2490,7 @@ export default function App() {
       [currentMode]: {
         ...modes[currentMode],
         options: newOptions,
+        baseOptions: [...newOptions],
       },
     };
     setModes(updatedModes);
@@ -2347,7 +2668,7 @@ export default function App() {
     if (iconKey && ICON_LIBRARY[iconKey]?.svg) {
       return ICON_LIBRARY[iconKey].svg;
     }
-    return ICON_LIBRARY.candlestick?.svg || ICON_LIBRARY.stop_loss?.svg;
+    return ICON_LIBRARY.briefcase?.svg || ICON_LIBRARY.home?.svg;
   };
 
   const triggerAppShutdown = () => {
@@ -2449,13 +2770,29 @@ export default function App() {
         style={{
           transform: `translate(${translate.x}px, ${translate.y}px) scale(${isGripped ? 1.035 : 1})`,
           boxShadow: !licenseActive ? 'none' : (isGripped ? `0 20px 50px -5px ${modes[currentMode]?.soft || 'var(--accent-soft)'}, 0 8px 24px -2px rgba(0, 0, 0, 0.45)` : undefined),
-          transition: (isGripped || isResizingHeight) ? 'none' : 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: isGripped ? 'transform 0s, box-shadow 0.2s ease' : 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           cursor: isGripped ? 'grabbing' : undefined,
-          minHeight: (settingsOpen && !minimized) ? '420px' : undefined,
+          minHeight: (settingsOpen && !minimized) ? `${420 + extraHeight}px` : undefined,
           position: 'relative',
           overflow: 'hidden',
         }}
       >
+        {/* Scale Drag Handle */}
+        <div
+          className="resize-handle no-drag"
+          onPointerDown={handleSizingMouseDown}
+          onMouseDown={handleSizingMouseDown}
+          title="Drag left/right to scale window"
+        />
+        {/* Bottom Height Extension Drag Handle */}
+        {!minimized && (
+          <div
+            className="bottom-resize-handle no-drag"
+            onPointerDown={handleBottomSizingMouseDown}
+            onMouseDown={handleBottomSizingMouseDown}
+            title="Drag down to extend list length (up to +50%)"
+          />
+        )}
         {/* Wallpaper Background Layer */}
         {wallpaperUrl && (
           <div
@@ -2517,11 +2854,11 @@ export default function App() {
             <img 
               className="license-logo" 
               src={overdeskLogo} 
-              alt="Overdesk Checklist Logo" 
+              alt="Overdesk Everyone Logo" 
               style={{ width: '88px', height: '88px', objectFit: 'contain', marginBottom: '2px' }}
               referrerPolicy="no-referrer"
             />
-            <div className="license-title">Overdesk Checklist</div>
+            <div className="license-title">Overdesk Everyone</div>
             <div className="license-sub">
               Enter your license key to activate.
               <br />
@@ -2563,7 +2900,7 @@ export default function App() {
             
             <div className="license-hint">
               <span>
-                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/app3" target="_blank" rel="noreferrer">overdesk.gumroad.com/l/app3</a>
+                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/everyone" target="_blank" rel="noreferrer">overdesk.gumroad.com/l/everyone</a>
               </span>
             </div>
           </div>
@@ -3036,15 +3373,13 @@ export default function App() {
             className="icon-picker open"
             id="settings-panel"
           >
-            <div className="picker-header settings-header" style={{ flexDirection: 'column', alignItems: 'center', marginBottom: '4px', gap: '4px', cursor: 'grab' }}>
+            <div className="picker-header" style={{ flexDirection: 'column', alignItems: 'center', marginBottom: '4px', gap: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
                 <button
-                  className="picker-done no-drag"
+                  className="picker-done"
                   onClick={() => setSettingsOpen(false)}
                   title="Done"
                   style={{ display: 'flex', alignItems: 'center' }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   <svg viewBox="0 0 24 24" style={{ width: '13px', height: '13px', marginRight: '4px' }}>
                     <polyline points="20 6 9 17 4 12" />
@@ -3056,10 +3391,10 @@ export default function App() {
             </div>
 
             <div
-              className="settings-body no-drag"
-              style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}
+              className="settings-body no-scrollbar"
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}
             >
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Window Scale</span>
@@ -3118,19 +3453,6 @@ export default function App() {
               </div>
 
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
-                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Move Checked to Bottom</span>
-                <GooeyNav
-                  items={[
-                    { label: 'Enabled', onClick: () => handleMoveCheckedToBottomChange(true) },
-                    { label: 'Disabled', onClick: () => handleMoveCheckedToBottomChange(false) },
-                  ]}
-                  activeIndex={moveCheckedToBottom ? 0 : 1}
-                  particleCount={12}
-                  animationTime={450}
-                />
-              </div>
-
-              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Minimized Text Animation</span>
                 <GooeyNav
                   items={[
@@ -3142,6 +3464,23 @@ export default function App() {
                   animationTime={450}
                 />
               </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Move Checked to Bottom</span>
+                <GooeyNav
+                  items={[
+                    { label: 'On', onClick: () => handleAutoMoveCompletedChange(true) },
+                    { label: 'Off', onClick: () => handleAutoMoveCompletedChange(false) },
+                  ]}
+                  activeIndex={autoMoveCompleted ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
+
+
+
 
               {/* Wallpaper Background Settings */}
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
@@ -3533,6 +3872,330 @@ export default function App() {
           </div>
         )}
 
+        {/* PC Autostart Setup & Helper Modal */}
+        {showAutostartGuideModal && (
+          <div
+            onClick={() => setShowAutostartGuideModal(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999,
+              background: 'rgba(0, 0, 0, 0.68)',
+              backdropFilter: 'blur(16px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              animation: 'fadeInScale 0.2s ease',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: '440px',
+                background: isLight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(12, 18, 30, 0.96)',
+                backdropFilter: 'blur(30px) saturate(200%)',
+                borderRadius: '24px',
+                border: isLight ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(255,255,255,0.22)',
+                boxShadow: isLight ? '0 20px 50px rgba(0, 0, 0, 0.2)' : '0 24px 60px rgba(0, 0, 0, 0.8)',
+                padding: '20px 22px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                color: isLight ? '#0f172a' : '#ffffff',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+              }}
+              className="no-scrollbar"
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, letterSpacing: '-0.01em' }}>
+                      PC Startup & Auto-Launch
+                    </h3>
+                    <span style={{ fontSize: '11px', opacity: 0.7, fontWeight: 500 }}>
+                      Run OverDesk automatically on system boot
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAutostartGuideModal(false)}
+                  style={{
+                    background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Status Badge */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '12px',
+                  background: startOnBoot ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid ' + (startOnBoot ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'),
+                }}
+              >
+                <span style={{ fontSize: '14px' }}>{startOnBoot ? '✅' : '⚡'}</span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: startOnBoot ? '#10b981' : '#f59e0b' }}>
+                  {startOnBoot ? 'Startup Mode Active in App Settings' : 'Startup Preference Configured'}
+                </span>
+              </div>
+
+              {/* Option 1: 1-Click Windows Batch Script */}
+              <div
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800 }}>Option 1: Windows 1-Click Startup Shortcut</span>
+                  <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: '#3b82f6', color: '#fff', fontWeight: 800 }}>Recommended</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '11px', opacity: 0.8, lineHeight: 1.4 }}>
+                  Download the startup batch script, then press <code style={{ background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '4px' }}>Win + R</code>, type <code style={{ background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '4px' }}>shell:startup</code>, and drag the downloaded file into that folder.
+                </p>
+                <button
+                  type="button"
+                  onClick={downloadWindowsAutostartBat}
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download OverDesk-AutoStart.bat
+                </button>
+              </div>
+
+              {/* Option 2: Browser PWA Auto-Launch on Login */}
+              <div
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
+                <span style={{ fontSize: '12px', fontWeight: 800 }}>Option 2: Browser App (Chrome / Edge PWA)</span>
+                <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '11px', opacity: 0.8, lineHeight: 1.5 }}>
+                  <li>Click the <strong>Install / App icon</strong> in your browser address bar.</li>
+                  <li>In Chrome/Edge settings or app management page (<code style={{ background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '4px' }}>chrome://apps</code>), right-click OverDesk.</li>
+                  <li>Check <strong>"Start app when you sign in to your computer"</strong>.</li>
+                </ol>
+              </div>
+
+              {/* Option 3: macOS / Linux */}
+              <div
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '16px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <span style={{ fontSize: '11.5px', fontWeight: 800 }}>Mac / Linux Autostart</span>
+                <p style={{ margin: 0, fontSize: '10.5px', opacity: 0.75, lineHeight: 1.4 }}>
+                  On macOS: Open <em>System Settings → General → Login Items</em> and add Chrome/Safari open to this page URL.
+                </p>
+              </div>
+
+              {/* Footer Button */}
+              <button
+                type="button"
+                onClick={() => setShowAutostartGuideModal(false)}
+                style={{
+                  background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.14)',
+                  color: 'inherit',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '9px 16px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Calendar Reminder View Overlay */}
+        {activeCalendarTask && (
+          <CalendarReminderView
+            modeKey={activeCalendarTask.modeKey}
+            taskText={activeCalendarTask.taskText}
+            taskIdx={activeCalendarTask.taskIdx}
+            existingReminder={taskReminders[`${activeCalendarTask.modeKey}_${activeCalendarTask.taskIdx}`]}
+            allReminders={taskReminders}
+            isLight={isLight}
+            accentSoft={modes[currentMode]?.soft}
+            modeColor={modes[activeCalendarTask.modeKey]?.accent || '#38bdf8'}
+            wallpaperUrl={wallpaperUrl}
+            onSaveReminder={handleSaveTaskReminder}
+            onDeleteReminder={handleDeleteTaskReminder}
+            onDeleteAllReminders={handleDeleteAllTaskReminders}
+            onClose={() => setActiveCalendarTask(null)}
+          />
+        )}
+
+        {/* Active Alarm Ringing Alert Glassy Popup Modal */}
+        {activeAlarmModal && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 100,
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(25px)',
+              WebkitBackdropFilter: 'blur(25px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+              borderRadius: '32px',
+              animation: 'fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '300px',
+                background: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(30, 41, 59, 0.95)',
+                border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '24px',
+                padding: '20px',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                color: isLight ? '#0f172a' : '#ffffff',
+              }}
+            >
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '12px',
+                  boxShadow: '0 8px 20px rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#f59e0b', marginBottom: '4px' }}>
+                ⏰ Task Reminder Alarm
+              </span>
+
+              <h3 style={{ margin: '4px 0 6px', fontSize: '16px', fontWeight: 800 }}>
+                {activeAlarmModal.taskText}
+              </h3>
+
+              {activeAlarmModal.note && (
+                <p style={{ margin: '0 0 12px', fontSize: '12px', opacity: 0.8, fontStyle: 'italic' }}>
+                  "{activeAlarmModal.note}"
+                </p>
+              )}
+
+              <span style={{ fontSize: '11px', opacity: 0.6, marginBottom: '16px' }}>
+                Set for {activeAlarmModal.date} at {activeAlarmModal.time}
+              </span>
+
+              <button
+                onClick={() => setActiveAlarmModal(null)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '99px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                }}
+              >
+                Dismiss Alarm
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Text Header Mode Descriptions */}
         <div className="mode-row">
           <p className="mode-label" style={{ margin: 0 }}>Mode</p>
@@ -3757,8 +4420,10 @@ export default function App() {
                   borderRadius: '999px',
                   border: 'none',
                   userSelect: 'none',
-                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transition: 'background 0.18s, color 0.18s',
                   cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
                 }}
                 onClick={() => setIsTimerRunning(!isTimerRunning)}
                 title={isTimerRunning ? "Pause timer" : "Start timer"}
@@ -3767,6 +4432,9 @@ export default function App() {
                   style={{
                     fontFamily: 'var(--font-mono), monospace',
                     letterSpacing: '0.04em',
+                    fontVariantNumeric: 'tabular-nums',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                 >
                   {formatTime(countdownTimeLeft)}
@@ -3910,9 +4578,11 @@ export default function App() {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       maxWidth: '100%',
-                      lineHeight: '1.2',
-                      paddingBottom: '2px',
-                      display: 'block',
+                      lineHeight: '38px',
+                      height: '38px',
+                      paddingBottom: '0',
+                      display: 'flex',
+                      alignItems: 'center',
                       fontSize: dynamicFontSize,
                       flex: 1,
                       minWidth: 0,
@@ -3965,18 +4635,21 @@ export default function App() {
         {/* Dynamic Items list area */}
         <div className="card-body">
           <div
-            className={`scroll-area ${isChecklistScrolling ? 'is-scrolling' : ''}`}
-            onScroll={handleChecklistScroll}
+            className={`scroll-area ${isScrolling ? 'is-scrolling' : ''}`}
+            onScroll={handleScrollAreaScroll}
             style={{
-              height: `${176 + appliedExtension}px`,
-              transition: isResizingHeight ? 'none' : 'height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              height: `${176 + extraHeight}px`,
+              minHeight: `${176 + extraHeight}px`,
+              maxHeight: `${176 + extraHeight}px`,
             }}
           >
-            <ul className="options" id="options-list" ref={optionsListRef}>
+            <ul className="options" id="options-list">
               {modes[currentMode]?.options.map((itemText, optionIdx) => {
                 const isItemChecked = (selections[currentMode] || []).includes(optionIdx);
                 const isEditingItem = editingItemIdx === optionIdx;
                 const totalOptionsCount = modes[currentMode]?.options.length || 0;
+                const itemReminderKey = `${currentMode}_${optionIdx}`;
+                const itemReminder = taskReminders[itemReminderKey] || Object.values(taskReminders).find(r => (r as TaskReminder).modeKey === currentMode && (r as TaskReminder).taskText === itemText) as TaskReminder | undefined;
 
                 return (
                   <li
@@ -4056,6 +4729,53 @@ export default function App() {
                     ) : (
                       <span className="opt-text">{itemText}</span>
                     )}
+
+                    {/* Clock Icon button to open Calendar Reminder page */}
+                    {!isEditingItem && (() => {
+                      const modeAccent = modes[currentMode]?.accent || '#3b82f6';
+                      const hasActiveReminder = itemReminder && itemReminder.enabled;
+                      return (
+                        <button
+                          className={`option-clock-btn ${hasActiveReminder ? 'has-reminder' : ''}`}
+                          title={
+                            hasActiveReminder
+                              ? `Reminder set for ${itemReminder.date} at ${itemReminder.time}${itemReminder.note ? ` (${itemReminder.note})` : ''}`
+                              : 'Set calendar date & time reminder'
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCalendarTask({ modeKey: currentMode, taskText: itemText, taskIdx: optionIdx });
+                          }}
+                          style={{
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            lineHeight: 1,
+                            ...(hasActiveReminder
+                              ? {
+                                  color: modeAccent,
+                                  border: 'none',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  background: isLight ? '#ffffff' : 'rgba(0,0,0,0.35)',
+                                  boxShadow: isLight ? '0 1px 3px rgba(0, 0, 0, 0.08)' : '0 1px 4px rgba(0, 0, 0, 0.25)',
+                                }
+                              : {})
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: modeAccent, flexShrink: 0, display: 'block' }}>
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          {hasActiveReminder && (
+                            <span className="reminder-time-badge" style={{ color: modeAccent, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0, fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>{itemReminder.time}</span>
+                          )}
+                        </button>
+                      );
+                    })()}
 
                     {/* Action reorder & delete buttons in edit mode */}
                     {editMode && (
@@ -4149,48 +4869,10 @@ export default function App() {
               <span id="reset-label">{editMode ? 'Reset all columns' : 'Reset active column'}</span>
             </button>
           </div>
-
         </div>
           </>
         )}
           </>
-        )}
-
-        {/* Bottom Vertical Extension Resize Handle */}
-        {!minimized && (
-          <div
-            className="bottom-resize-handle no-drag"
-            onPointerDown={handleBottomResizePointerDown}
-            title="Drag down to extend app length (max +50% of base size)"
-            style={{
-              width: '100%',
-              height: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'ns-resize',
-              marginTop: '4px',
-              marginBottom: '2px',
-              userSelect: 'none',
-              touchAction: 'none',
-              zIndex: 100,
-              opacity: isResizingHeight ? 1 : 0.7,
-              transition: 'opacity 0.2s',
-            }}
-          >
-            <div
-              style={{
-                width: '42px',
-                height: '4px',
-                borderRadius: '999px',
-                background: isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)',
-                boxShadow: isResizingHeight
-                  ? `0 0 10px ${modes[currentMode]?.accent || 'var(--accent)'}`
-                  : 'none',
-                transition: 'background 0.2s, box-shadow 0.2s',
-              }}
-            />
-          </div>
         )}
       </div>
     </div>

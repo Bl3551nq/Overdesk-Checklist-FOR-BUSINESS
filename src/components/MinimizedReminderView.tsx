@@ -166,12 +166,16 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
   };
 
   return (
-    <div className={`minimized-reminder-view animate-fade-in no-drag ${isEditingReminder ? 'editing' : ''}`}>
+    <div
+      className={`minimized-reminder-view animate-fade-in no-drag ${isEditingReminder ? 'is-editing' : ''}`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       {isEditingReminder ? (
         <div className="reminder-edit-wrap no-drag">
           <textarea
             autoFocus
-            className="minimized-reminder-input no-drag"
+            className="minimized-reminder-input no-scrollbar no-drag"
             value={tempReminderText}
             onChange={handleTextChange}
             maxLength={100}
@@ -187,8 +191,6 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
             rows={2}
             style={{
               width: '100%',
-              minHeight: '44px',
-              maxHeight: '52px',
               background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
               border: '1px solid ' + (isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'),
               borderRadius: '12px',
@@ -201,42 +203,49 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
               outline: 'none',
               resize: 'none',
               boxSizing: 'border-box',
-              lineHeight: 1.35,
-              overflowY: 'auto',
+              lineHeight: 1.3,
             }}
           />
-          <div className="reminder-btn-row no-drag">
+          <div className="reminder-btn-row no-drag" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', marginBottom: '4px' }}>
             <button
-              onClick={handleSaveReminder}
+              type="button"
               className="no-drag"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSaveReminder();
+              }}
               style={{
                 background: 'var(--accent)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '999px',
-                padding: '5px 15px',
+                padding: '5px 16px',
                 fontSize: '11px',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
                 boxShadow: '0 2px 10px ' + (accentSoft || 'var(--accent-soft)'),
-                transition: 'opacity 0.15s, transform 0.1s',
+                transition: 'transform 0.15s ease, opacity 0.15s ease',
               }}
             >
               Save Reminder
             </button>
             <button
-              onClick={() => setIsEditingReminder(false)}
+              type="button"
               className="no-drag"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditingReminder(false);
+              }}
               style={{
                 background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
                 color: 'var(--text)',
                 border: 'none',
                 borderRadius: '999px',
-                padding: '5px 13px',
+                padding: '5px 14px',
                 fontSize: '11px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                transition: 'opacity 0.15s, transform 0.1s',
+                transition: 'opacity 0.15s ease',
               }}
             >
               Cancel
@@ -246,15 +255,17 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
       ) : (
         <div
           className="reminder-text-display-wrap no-drag"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             setTempReminderText(reminderText);
             setIsEditingReminder(true);
           }}
-          onDoubleClick={() => {
+          onDoubleClick={(e) => {
+            e.stopPropagation();
             setTempReminderText(reminderText);
             setIsEditingReminder(true);
           }}
-          title="Click to edit reminder"
+          title="Click or double-click to edit reminder"
           style={{
             cursor: 'pointer',
             width: '100%',
@@ -263,13 +274,14 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '0 6px',
+            padding: '2px 6px',
             borderRadius: '12px',
             background: 'transparent',
+            position: 'relative',
           }}
         >
           <div
-            className="minimized-reminder-text"
+            className="minimized-reminder-text no-drag"
             style={{
               fontSize: getReminderFontSize(reminderText),
               fontWeight: 800,
@@ -308,6 +320,14 @@ export const MinimizedReminderView: React.FC<MinimizedReminderViewProps> = ({
                 {reminderText}
               </span>
             )}
+          </div>
+
+          <div className="reminder-edit-hint no-drag" style={{ marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '9.5px', fontWeight: 600 }}>
+            <svg className="reminder-edit-icon" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            <span>Click to edit</span>
           </div>
         </div>
       )}

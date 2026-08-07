@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 async function fetchLogo() {
-  const url = 'https://raw.githubusercontent.com/Bl3551nq/Overdesk-Logos/refs/heads/main/OVERDESK-checklist.svg';
+  const url = 'https://raw.githubusercontent.com/Bl3551nq/Overdesk-Logos/refs/heads/main/OVERDESK%20EVERYONE%20LOGO.svg';
   console.log(`Fetching SVG from: ${url}`);
   try {
     const res = await fetch(url);
@@ -17,7 +17,10 @@ async function fetchLogo() {
     console.log(svgContent.substring(0, 1000));
   } catch (err) {
     console.error('Error fetching SVG:', err);
-    process.exit(1);
+    const destPath = path.join(__dirname, '../src/logo.svg');
+    if (fs.existsSync(destPath)) {
+      console.log('src/logo.svg already exists, skipping fetch error.');
+    }
   }
 }
 

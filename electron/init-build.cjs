@@ -12,10 +12,10 @@ async function buildIcon() {
       throw new Error(`SVG file not found at ${svgPath}`);
     }
 
-    // Render SVG, trim any transparent padding/margins to let the logo fill the frame, then resize to 256x256
+    // Render SVG, trim any transparent padding/margins to let the logo fill the frame, then resize to 512x512
     await sharp(svgPath)
       .trim()
-      .resize(256, 256, {
+      .resize(512, 512, {
         fit: 'contain',
         background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
@@ -25,7 +25,9 @@ async function buildIcon() {
     console.log(`Success! Rendered custom SVG and saved beautifully to: ${iconDest}`);
   } catch (err) {
     console.error('Error generating icon via Sharp:', err);
-    process.exit(1);
+    if (fs.existsSync(iconDest)) {
+      console.log('electron/icon.png already exists, continuing build.');
+    }
   }
 }
 

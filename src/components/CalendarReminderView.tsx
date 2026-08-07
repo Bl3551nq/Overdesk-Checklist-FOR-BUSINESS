@@ -1509,7 +1509,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
             </div>
 
             {/* Action Bar (Save / Delete / Success) */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '6px', marginBottom: '4px', paddingBottom: '8px' }}>
               {existingReminder ? (
                 <button
                   onClick={() => onDeleteReminder(taskIdx)}
@@ -1518,7 +1518,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                     border: '1px solid rgba(239, 68, 68, 0.4)',
                     color: '#f87171',
                     borderRadius: '99px',
-                    padding: '6px 12px',
+                    padding: '7px 14px',
                     fontSize: '11px',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -1542,7 +1542,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '99px',
-                  padding: '7px 18px',
+                  padding: '8px 20px',
                   fontSize: '11.5px',
                   fontWeight: 700,
                   cursor: 'pointer',

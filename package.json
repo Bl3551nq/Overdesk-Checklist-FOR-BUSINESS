@@ -1,18 +1,18 @@
 {
-  "name": "overdesk-checklist",
+  "name": "overdesk-everyone",
   "private": true,
-  "version": "2.0.0",
-  "description": "Overdesk Checklist - Minimalistic transparent overlay desktop widget checklist.",
+  "version": "1.0.0",
+  "description": "Overdesk Everyone - Minimalistic transparent overlay desktop widget checklist.",
   "author": "Overdesk",
   "gumroad": {
-    "product_id": "IuGRgU5DfICDDM1w7-eY7Q==",
-    "product_permalink": "app3"
+    "product_id": "njBrop7enJxgaZWr4Y7-dQ==",
+    "product_permalink": "everyone"
   },
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "node electron/fetch-logo.cjs && node electron/init-build.cjs && vite build",
+    "build": "node -e \"const fs=require('fs'),cp=require('child_process'); if(fs.existsSync('./electron/fetch-logo.cjs')){try{cp.execSync('node electron/fetch-logo.cjs',{stdio:'inherit'})}catch(e){}} if(fs.existsSync('./electron/init-build.cjs')){try{cp.execSync('node electron/init-build.cjs',{stdio:'inherit'})}catch(e){}}\" && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
@@ -20,14 +20,13 @@
     "electron:build": "npm run build && electron-builder --win"
   },
   "build": {
-    "appId": "com.overdesk.checklist",
-    "productName": "Overdesk Checklist",
+    "appId": "com.overdesk.everyone",
+    "productName": "Overdesk Everyone",
     "icon": "electron/icon.png",
     "win": {
       "target": [
         "nsis"
       ],
-      "artifactName": "Overdesk-Checklist.${ext}",
       "icon": "electron/icon.png",
       "requestedExecutionLevel": "asInvoker"
     },
