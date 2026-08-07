@@ -47,22 +47,9 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   NO SCROLLBAR UTILITY
-═══════════════════════════════════════════════════════ */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* ═══════════════════════════════════════════════════════
    BORDERLESS DRAG REGIONS (Electron Drag Handling)
 ═══════════════════════════════════════════════════════ */
-body.electron .card,
-body.electron .icon-picker,
-body.electron #settings-panel {
+body.electron .card {
   -webkit-app-region: drag;
 }
 
@@ -73,13 +60,27 @@ body.electron .resize-handle, body.electron .reset-wrap, body.electron .color-sw
 body.electron .color-custom-wrap, body.electron .title-wrap, body.electron .title, 
 body.electron .title-container-editable, body.electron .edit-title-btn,
 body.electron .title-input, body.electron .mode-label, body.electron a, body.electron select, body.electron .picker-grid,
-body.electron .color-row, body.electron .picker-done, body.electron .picker-close,
 body.electron .settings-body, body.electron .setting-section,
+body.electron .minimized-reminder-view, body.electron .reminder-edit-wrap, body.electron .reminder-text-display-wrap,
+body.electron .minimized-reminder-input, body.electron .reminder-btn-row, body.electron .minimized-reminder-text,
 body.electron .no-drag,
 body.electron input[type="range"],
 body.electron input[type="range"]::-webkit-slider-thumb,
 body.electron input[type="range"]::-webkit-slider-runnable-track {
   -webkit-app-region: no-drag !important;
+}
+
+body.electron .picker-header {
+  -webkit-app-region: drag !important;
+  cursor: grab;
+}
+
+body.electron .picker-header button,
+body.electron .picker-header input,
+body.electron .picker-header .picker-done,
+body.electron .picker-header .picker-close {
+  -webkit-app-region: no-drag !important;
+  cursor: pointer;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -581,9 +582,6 @@ body.editing .icon-btn::after {
 }
 
 .title-wrap {
-  height: 38px;
-  min-height: 38px;
-  max-height: 38px;
   margin-bottom: 12px;
   flex-shrink: 0;
   display: flex;
@@ -595,16 +593,18 @@ body.editing .icon-btn::after {
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
   opacity: 1;
   overflow: hidden;
-  padding-bottom: 0;
+  padding-bottom: 2px;
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .title-container-editable {
   flex: 1;
   min-width: 0;
-  height: 38px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -616,11 +616,9 @@ body.editing .icon-btn::after {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
-  line-height: 38px;
-  height: 38px;
-  padding-bottom: 0;
-  display: flex;
-  align-items: center;
+  line-height: 1.2;
+  padding-bottom: 2px;
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -715,7 +713,7 @@ body.editing .icon-btn::after {
 }
 .card.minimized {
   padding-top: 14px;
-  padding-bottom: 0px;
+  padding-bottom: 12px;
 }
 .card.minimized .top-bar {
   margin-bottom: 0px;
@@ -730,28 +728,47 @@ body.editing .icon-btn::after {
   justify-content: center;
   padding: 2px 6px;
   box-sizing: border-box;
-  height: 80px;
   min-height: 80px;
-  max-height: 80px;
   text-align: center;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  transition: min-height 0.25s ease-out;
+}
+
+.minimized-reminder-view.editing {
+  min-height: 108px;
+  padding-bottom: 4px;
 }
 
 .reminder-edit-wrap {
   width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .reminder-btn-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  margin-bottom: 2px;
+  z-index: 10;
+}
+
+/* Invisible scrollbars for reminder edit textarea */
+.minimized-reminder-input {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.minimized-reminder-input::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .reminder-edit-hint {
@@ -815,35 +832,14 @@ body.editing .icon-btn::after {
   padding-left: 0;
   padding-right: 0;
   height: 176px;
-  min-height: 176px;
-  max-height: 176px;
   flex-shrink: 0;
   scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .scroll-area::-webkit-scrollbar {
-  width: 4px;
-}
-.scroll-area::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 99px;
-}
-.scroll-area::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 99px;
-}
-.scroll-area.is-scrolling {
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) transparent;
-}
-.scroll-area.is-scrolling::-webkit-scrollbar-track {
-  background: var(--opt-hover);
-}
-.scroll-area.is-scrolling::-webkit-scrollbar-thumb {
-  background: var(--accent);
-  box-shadow: 0 0 6px 1px var(--accent-soft);
-}
-.scroll-area.is-scrolling::-webkit-scrollbar-thumb:hover {
-  background: var(--text);
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .options {
@@ -951,7 +947,7 @@ body.editing .icon-btn::after {
 }
 .card.light .opt-text {
   color: #0f172a;
-  text-shadow: none;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95), 0 0 8px rgba(255, 255, 255, 0.85);
 }
 .option.selected .opt-text {
   text-decoration: line-through;
@@ -961,79 +957,8 @@ body.editing .icon-btn::after {
 }
 .card.light .option.selected .opt-text {
   color: #475569;
-  text-shadow: none;
   opacity: 0.85;
 }
-
-/* Clock Icon Button beside checklist items */
-.option-clock-btn {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text, #ffffff);
-  opacity: 0.4;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 6px;
-  transition: opacity 0.18s, background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
-  flex-shrink: 0;
-  white-space: nowrap;
-  margin-left: auto;
-  z-index: 4;
-  line-height: 1;
-}
-.card.light .option-clock-btn {
-  color: #0f172a;
-  opacity: 0.45;
-}
-.option-clock-btn:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.16);
-  transform: scale(1.08);
-}
-.card.light .option-clock-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.option-clock-btn.has-reminder {
-  opacity: 1;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: opacity 0.18s, background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
-}
-.option-clock-btn.has-reminder svg {
-  filter: drop-shadow(0 0 4px currentColor);
-  flex-shrink: 0;
-  display: block;
-}
-
-.reminder-time-badge {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  display: inline-flex;
-  align-items: center;
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 
 .opt-input {
   flex: 1;
@@ -1217,10 +1142,11 @@ body.editing .option { cursor: default; }
 
 .settings-body {
   overflow-y: auto !important;
-  max-height: 350px;
-  padding-right: 2px;
-  -ms-overflow-style: none !important;
+  flex: 1;
+  max-height: none;
+  padding-right: 4px;
   scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 .settings-body::-webkit-scrollbar {
   display: none !important;
@@ -1238,6 +1164,11 @@ body.editing .option { cursor: default; }
   justify-content: space-between;
   margin-bottom: 10px;
   flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+.picker-header:active {
+  cursor: grabbing;
 }
 .picker-title {
   font-size: 10px;
@@ -1337,72 +1268,24 @@ body.editing .option { cursor: default; }
   width: 18px !important;
   height: 18px !important;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(255, 255, 255, 0.95);
   stroke: currentColor;
 }
-.card.light .picker-item svg,
-.card.light .picker-item svg * {
-  color: #000000 !important;
-  stroke: #000000 !important;
+.card.light .picker-item svg {
+  color: #0f172a !important;
+  stroke: #0f172a !important;
 }
 
 .picker-item .custom-svg-icon {
   width: 18px !important;
   height: 18px !important;
-  color: rgba(255, 255, 255, 0.95) !important;
+  color: rgba(255, 255, 255, 0.95);
 }
 .card.light .picker-item .custom-svg-icon,
-.card.light .picker-item .custom-svg-icon * {
-  color: #000000 !important;
-  stroke: #000000 !important;
-}
-
-.card.light .icon-picker {
-  background: 
-    radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.98) 0%, transparent 45%),
-    radial-gradient(circle at 90% 85%, var(--accent-soft) 0%, transparent 60%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(240, 243, 255, 0.98) 100%);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.9) inset, 0 12px 36px rgba(0, 0, 0, 0.12);
-}
-
-.card.light .picker-title {
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.card.light .picker-close {
-  background: rgba(0, 0, 0, 0.08);
-  color: rgba(0, 0, 0, 0.7);
-}
-.card.light .picker-close:hover {
-  background: rgba(239, 68, 68, 0.18);
-  color: #ef4444;
-}
-
-.card.light .picker-item {
-  color: #000000;
-}
-.card.light .picker-item:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-.card.light .picker-item.current {
-  background: var(--accent-soft);
-  border-color: rgba(0, 0, 0, 0.25);
-}
-
-.card.light .picker-item span {
-  color: #000000 !important;
-  font-weight: 600;
-}
-
-.card.light .picker-item.picker-upload {
-  border: 1px dashed rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.04);
-}
-.card.light .picker-item.picker-upload svg,
-.card.light .picker-item.picker-upload svg * {
-  color: #000000 !important;
-  stroke: #000000 !important;
+.card.light .picker-item .custom-svg-icon svg {
+  color: #0f172a !important;
+  fill: #0f172a !important;
+  stroke: #0f172a !important;
 }
 
 .picker-item img,
@@ -1468,19 +1351,19 @@ body.editing .option { cursor: default; }
   background: rgba(0, 0, 0, 0.03);
 }
 .picker-item span {
-  font-size: 8px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
   text-align: center;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 .card.light .picker-item span {
-  color: rgba(0, 0, 0, 0.65);
+  color: rgba(0, 0, 0, 0.85);
 }
 
 .card.light .icon-picker {
@@ -1494,24 +1377,28 @@ body.editing .option { cursor: default; }
   box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.9) inset;
 }
 .card.light .picker-title {
-  color: rgba(0, 0, 0, 0.35);
+  color: #0f172a !important;
+  font-weight: 700;
+  opacity: 0.85;
 }
 .card.light .picker-close {
-  background: rgba(0, 0, 0, 0.07);
-  color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.08);
+  color: #0f172a !important;
 }
 .card.light .picker-close:hover {
   background: rgba(200, 0, 0, 0.1);
-  color: rgba(180, 0, 0, 0.85);
+  color: rgba(180, 0, 0, 0.85) !important;
 }
 .card.light .picker-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.08);
 }
 .card.light .picker-item svg {
-  color: rgba(0, 0, 0, 0.65);
+  color: #0f172a !important;
+  stroke: #0f172a !important;
 }
 .card.light .picker-item span {
-  color: rgba(0, 0, 0, 0.35);
+  color: #0f172a !important;
+  font-weight: 600;
 }
 
 .color-row {
@@ -1579,6 +1466,15 @@ body.editing .option { cursor: default; }
   stroke-width: 2;
   stroke-linecap: round;
   pointer-events: none;
+}
+.card.light .color-custom-wrap {
+  border-color: rgba(0, 0, 0, 0.35);
+}
+.card.light .color-custom-wrap:hover {
+  border-color: #0f172a;
+}
+.card.light .color-custom-wrap svg {
+  stroke: #0f172a !important;
 }
 .color-custom-input {
   position: absolute;
@@ -1869,27 +1765,5 @@ body.animations-disabled *::after {
 
 .card.light .reorder-item-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.14) !important;
-}
-
-/* Universal Invisible Scrollbar utility */
-.no-scrollbar {
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-/* Calendar Reminder View custom invisible scrollbar */
-.calendar-scroll-body {
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
-}
-.calendar-scroll-body::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
 }
 
