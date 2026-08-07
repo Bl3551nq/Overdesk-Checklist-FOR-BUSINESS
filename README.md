@@ -1,4 +1,4 @@
-# Overdesk Checklist
+# Overdesk Everyone
 
 A sleek, minimalistic transparent desktop overlay checklist designed for Windows. Keep your key daily focus, tasks, and routines floating seamlessly on your desktop with responsive scaling, custom wallpapers, and automated updates.
 
