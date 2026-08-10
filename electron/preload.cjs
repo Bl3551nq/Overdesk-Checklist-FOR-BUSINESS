@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   checkLicense: () => ipcRenderer.invoke('check-license'),
+  startTrial: () => ipcRenderer.invoke('start-trial'),
   validateLicense: (key) => ipcRenderer.invoke('validate-license', key),
   closeApp: () => ipcRenderer.send('close-app'),
   setHeight: (height) => ipcRenderer.send('set-height', height),
@@ -11,10 +12,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore, options) => ipcRenderer.send('set-ignore-mouse-events', ignore, options),
   saveIcon: (dataUrl) => ipcRenderer.send('save-icon', dataUrl),
   installUpdate: () => ipcRenderer.send('install-update'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   onUpdateAvailable: (cb) => {
     ipcRenderer.on('update-available', (event, version) => cb(version));
   },
   onUpdateDownloaded: (cb) => {
     ipcRenderer.on('update-downloaded', () => cb());
+  },
+  onUpdateNotAvailable: (cb) => {
+    ipcRenderer.on('update-not-available', () => cb());
+  },
+  onUpdateError: (cb) => {
+    ipcRenderer.on('update-error', (event, err) => cb(err));
   }
 });

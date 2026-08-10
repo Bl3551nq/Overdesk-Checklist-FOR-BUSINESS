@@ -1718,16 +1718,18 @@ body.editing .option { cursor: default; }
    LICENSE GUMROAD VALIDATION SCREEN
 ═══════════════════════════════════════════════════════ */
 .card.license-mode {
-  padding: 16px !important;
+  padding: 16px 20px !important;
+  width: 320px !important;
+  box-sizing: border-box !important;
 }
 .license-card-inner {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   box-sizing: border-box;
-  padding: 8px 4px;
+  padding: 6px 4px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -1739,29 +1741,40 @@ body.editing .option { cursor: default; }
   border: none;
   box-shadow: none;
 }
+@keyframes logoFloatBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 .license-logo {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
-  margin-bottom: 2px;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+  margin-bottom: 0px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4));
+  animation: logoFloatBounce 2.5s ease-in-out infinite;
+  will-change: transform;
 }
 .license-title {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 0.01em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85), 0 0 16px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
 }
 .card.light .license-title {
   color: #0f172a;
-  text-shadow: 0 1px 6px rgba(255, 255, 255, 0.95), 0 0 12px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 6px rgba(255, 255, 255, 0.95);
 }
 .license-sub {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #f8fafc;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.4;
   font-weight: 600;
   text-shadow: 0 1.5px 6px rgba(0, 0, 0, 0.9);
   max-width: 280px;
@@ -1772,19 +1785,19 @@ body.editing .option { cursor: default; }
 }
 .license-input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
   color: #ffffff;
-  font-size: 13.5px;
+  font-size: 13px;
   font-family: monospace;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-align: center;
   outline: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25);
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .license-input::placeholder {
@@ -1792,8 +1805,6 @@ body.editing .option { cursor: default; }
 }
 .card.light .license-input {
   background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 0, 0, 0.25);
   color: #0f172a;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -1816,26 +1827,31 @@ body.editing .option { cursor: default; }
 }
 .license-btn {
   width: 100%;
-  padding: 12px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #0284c7, #2563eb);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 50%), linear-gradient(135deg, rgba(14, 116, 144, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%);
   color: #ffffff;
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 700;
-  border: none;
+  border: 1px solid rgba(56, 189, 248, 0.45);
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.12s;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  transition: all 0.18s ease;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 3px 10px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .license-btn:hover {
-  opacity: 0.92;
+  opacity: 0.98;
   transform: translateY(-1px);
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 4px 14px rgba(0, 0, 0, 0.5);
 }
 .license-hint {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #f1f5f9;
   text-align: center;
-  margin-top: 4px;
+  margin-top: 2px;
   font-weight: 600;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
 }
@@ -1850,6 +1866,148 @@ body.editing .option { cursor: default; }
 }
 .card.light .license-hint a {
   color: #0284c7 !important;
+}
+
+/* License Trial Box - Clean Container */
+.trial-wrap {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.trial-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%), linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.88) 100%);
+  color: #ffffff !important;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 3px 10px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.trial-btn:hover {
+  opacity: 0.98;
+  transform: translateY(-1px);
+  border-color: rgba(56, 189, 248, 0.7);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%), linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.card.light .trial-btn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 50%), linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-color: #0284c7;
+  color: #ffffff !important;
+}
+
+.trial-subtext {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.01em;
+}
+.card.light .trial-subtext {
+  color: #0f172a !important;
+  text-shadow: none;
+}
+
+.trial-used-box {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  font-size: 11.5px;
+  color: #fca5a5;
+  text-align: center;
+  line-height: 1.45;
+  font-weight: 600;
+}
+.card.light .trial-used-box {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #991b1b;
+}
+
+.license-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.license-option-pill {
+  padding: 5px 10px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%), rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+}
+.license-option-pill:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%), rgba(56, 189, 248, 0.3);
+  transform: translateY(-1px);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6), 0 4px 12px rgba(56, 189, 248, 0.35);
+}
+.card.light .license-option-pill {
+  color: #0284c7;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 100%), rgba(2, 132, 199, 0.12);
+  border-color: rgba(2, 132, 199, 0.35);
+}
+.card.light .license-option-pill:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%), rgba(2, 132, 199, 0.25);
+  color: #0284c7;
+}
+
+.license-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.license-divider::before, .license-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.card.light .license-divider {
+  color: rgba(15, 23, 42, 0.5);
+}
+.card.light .license-divider::before, .card.light .license-divider::after {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 /* Mode Icon Completion Glow disabled (bubble animation is preserved) */

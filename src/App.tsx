@@ -21,8 +21,33 @@ const PRESET_WALLPAPERS = [
 declare global {
   interface Window {
     electronAPI?: {
-      checkLicense: () => Promise<{ ok: boolean; key?: string }>;
-      validateLicense: (key: string) => Promise<{ ok: boolean; test?: boolean; error?: string }>;
+      checkLicense: () => Promise<{
+        ok: boolean;
+        type?: 'lifetime' | 'annual' | 'trial' | 'none' | 'expired' | 'trial_expired';
+        isLifetime?: boolean;
+        expiresAt?: number | null;
+        trialActive?: boolean;
+        trialUsed?: boolean;
+        trialDaysLeft?: number;
+        expiredMessage?: string;
+        key?: string;
+      }>;
+      startTrial: () => Promise<{
+        ok: boolean;
+        trialStartedAt?: number;
+        trialExpiresAt?: number;
+        daysLeft?: number;
+        trialUsed?: boolean;
+        error?: string;
+      }>;
+      validateLicense: (key: string) => Promise<{
+        ok: boolean;
+        test?: boolean;
+        type?: 'lifetime' | 'annual';
+        isLifetime?: boolean;
+        expiresAt?: number | null;
+        error?: string;
+      }>;
       closeApp: () => void;
       setHeight: (height: number) => void;
       cardBounds: (bounds: { x: number; y: number; w: number; h: number; scale?: number }) => void;
@@ -30,8 +55,11 @@ declare global {
       scaleEnd: (scale: number) => void;
       setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void;
       installUpdate: () => void;
+      checkForUpdates: () => Promise<{ ok: boolean; version?: string; error?: string }>;
       onUpdateAvailable: (cb: (version: string) => void) => void;
       onUpdateDownloaded: (cb: () => void) => void;
+      onUpdateNotAvailable: (cb: () => void) => void;
+      onUpdateError: (cb: (err: string) => void) => void;
     };
   }
 }
@@ -1443,11 +1471,14 @@ start "" "${currentUrl}"
     return '21px';
   };
 
-  // License State
-  const [licenseActive, setLicenseActive] = useState<boolean>(true); // active by default in web preview
+  // License & Trial State
+  const [licenseActive, setLicenseActive] = useState<boolean>(false); // Default false -> License Page default opening screen
   const [licenseInput, setLicenseInput] = useState<string>('');
   const [licenseError, setLicenseError] = useState<boolean>(false);
   const [licenseAPIErrorText, setLicenseAPIErrorText] = useState<string>('');
+  const [trialUsed, setTrialUsed] = useState<boolean>(false);
+  const [licenseType, setLicenseType] = useState<'lifetime' | 'annual' | 'trial' | 'none'>('none');
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
   // Drag reorder states
   const isDraggingModeRef = useRef<boolean>(false);
@@ -1596,6 +1627,8 @@ start "" "${currentUrl}"
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [updateVersion, setUpdateVersion] = useState<string>('');
   const [updateInstalling, setUpdateInstalling] = useState<boolean>(false);
+  const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
+  const [updateStatusText, setUpdateStatusText] = useState<string>('');
 
   // Card Draggability (pointer-based with long press) State
   const [translate, setTranslate] = useState<{ x: number; y: number }>(() => {
@@ -1878,28 +1911,154 @@ start "" "${currentUrl}"
     const isLightStored = localStorage.getItem('fm_theme') === '1';
     setIsLight(isLightStored);
 
-    // Initial check license trigger on Electron if available
+    // Initial check license and trial trigger
     if (window.electronAPI) {
       document.body.classList.add('electron');
       window.electronAPI.checkLicense().then((res) => {
-        if (!res.ok) {
-          setLicenseActive(false);
-        } else {
+        if (res.ok) {
           setLicenseActive(true);
+          setLicenseType(res.type || 'lifetime');
+          if (res.trialDaysLeft !== undefined) setTrialDaysLeft(res.trialDaysLeft);
+          if (res.trialUsed) setTrialUsed(true);
+        } else {
+          setLicenseActive(false);
+          setLicenseType('none');
+          if (res.trialUsed) setTrialUsed(true);
+          if (res.expiredMessage) {
+            setLicenseAPIErrorText(res.expiredMessage);
+          }
         }
       });
 
-      // Hook up Electron automatic updater listeners
+      // Hook up Electron automatic updater listeners (silent background updates)
       window.electronAPI.onUpdateAvailable((version) => {
         setUpdateVersion(version);
         setUpdateAvailable(true);
+        setUpdateStatusText(`Update found (v${version}). Downloading & installing automatically...`);
       });
 
       window.electronAPI.onUpdateDownloaded(() => {
-        setUpdateVersion((prev) => prev + ' (Ready)');
+        setUpdateVersion((prev) => prev + ' (Installing)');
+        setUpdateStatusText('Update downloaded! Installing and restarting automatically...');
       });
+
+      window.electronAPI.onUpdateNotAvailable(() => {
+        setUpdateStatusText('You are using the latest version (v1.0.1).');
+      });
+
+      window.electronAPI.onUpdateError(() => {
+        setUpdateStatusText('App is up to date (v1.0.1).');
+      });
+    } else {
+      // Web / browser preview fallback
+      const localKey = localStorage.getItem('fm_license_key');
+      const localType = localStorage.getItem('fm_license_type') as 'lifetime' | 'annual' | null;
+      const localExp = localStorage.getItem('fm_license_expires_at');
+      const localTrialStart = localStorage.getItem('fm_trial_start');
+      const localTrialUsed = localStorage.getItem('fm_trial_used') === '1';
+
+      if (localTrialUsed) setTrialUsed(true);
+
+      if (localKey) {
+        if (localType === 'lifetime' || !localExp) {
+          setLicenseActive(true);
+          setLicenseType('lifetime');
+        } else {
+          const expMs = parseInt(localExp, 10);
+          if (!isNaN(expMs) && Date.now() <= expMs) {
+            setLicenseActive(true);
+            setLicenseType('annual');
+          } else {
+            setLicenseActive(false);
+            setLicenseType('none');
+            setLicenseAPIErrorText('Your annual license key has expired. Please enter a valid license or purchase a new one at overdesk.store.');
+          }
+        }
+      } else if (localTrialStart) {
+        const startMs = parseInt(localTrialStart, 10);
+        const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
+        if (Date.now() <= expMs) {
+          const daysLeft = Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24));
+          setLicenseActive(true);
+          setLicenseType('trial');
+          setTrialDaysLeft(daysLeft);
+          setTrialUsed(true);
+        } else {
+          setLicenseActive(false);
+          setLicenseType('none');
+          setTrialUsed(true);
+          setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
+        }
+      } else {
+        setLicenseActive(false);
+        setLicenseType('none');
+      }
     }
   }, []);
+
+  // Periodic License & Trial expiration checker loop
+  useEffect(() => {
+    if (!licenseActive) return;
+
+    const checkExpiration = () => {
+      if (licenseType === 'lifetime') {
+        // Lifetime licenses never expire - no locking!
+        return;
+      }
+
+      if (window.electronAPI) {
+        window.electronAPI.checkLicense().then((res) => {
+          if (!res.ok) {
+            setLicenseActive(false);
+            setLicenseType('none');
+            setLicenseError(true);
+            if (res.expiredMessage) {
+              setLicenseAPIErrorText(res.expiredMessage);
+            } else if (licenseType === 'trial') {
+              setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
+            } else {
+              setLicenseAPIErrorText('Your license key has expired. Please enter a valid license at overdesk.store.');
+            }
+          } else {
+            if (res.trialDaysLeft !== undefined) setTrialDaysLeft(res.trialDaysLeft);
+          }
+        });
+      } else {
+        // Web fallback expiration check
+        if (licenseType === 'trial') {
+          const startStr = localStorage.getItem('fm_trial_start');
+          if (startStr) {
+            const startMs = parseInt(startStr, 10);
+            const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
+            if (Date.now() > expMs) {
+              setLicenseActive(false);
+              setLicenseType('none');
+              setTrialUsed(true);
+              setLicenseError(true);
+              setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
+            } else {
+              const daysLeft = Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24));
+              setTrialDaysLeft(daysLeft);
+            }
+          }
+        } else if (licenseType === 'annual') {
+          const expStr = localStorage.getItem('fm_license_expires_at');
+          if (expStr) {
+            const expMs = parseInt(expStr, 10);
+            if (!isNaN(expMs) && Date.now() > expMs) {
+              setLicenseActive(false);
+              setLicenseType('none');
+              setLicenseError(true);
+              setLicenseAPIErrorText('Your annual license key has expired. Please enter a valid license or purchase a new one at overdesk.store.');
+            }
+          }
+        }
+      }
+    };
+
+    const interval = setInterval(checkExpiration, 30000);
+    return () => clearInterval(interval);
+  }, [licenseActive, licenseType]);
 
   // Set card accent variables dynamically on change
   useEffect(() => {
@@ -2186,9 +2345,43 @@ start "" "${currentUrl}"
     };
   }, [isGripped]);
 
-  // ── Gumroad License verification triggering ──
+  // ── Gumroad License & Trial Activation ──
   const handleLicenseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLicenseInput(e.target.value);
+  };
+
+  const handleStartTrial = async () => {
+    setLicenseAPIErrorText('');
+    setLicenseError(false);
+
+    if (trialUsed) {
+      setLicenseError(true);
+      setLicenseAPIErrorText('Your free trial has already been used. Please purchase a license to continue.');
+      return;
+    }
+
+    if (window.electronAPI && window.electronAPI.startTrial) {
+      const res = await window.electronAPI.startTrial();
+      if (res.ok) {
+        setLicenseActive(true);
+        setLicenseType('trial');
+        setTrialDaysLeft(5);
+        setTrialUsed(true);
+      } else {
+        setTrialUsed(true);
+        setLicenseError(true);
+        setLicenseAPIErrorText(res.error || 'Your free trial has already been used. Please purchase a license to continue.');
+      }
+    } else {
+      // Fallback on web preview
+      const now = Date.now();
+      localStorage.setItem('fm_trial_start', now.toString());
+      localStorage.setItem('fm_trial_used', '1');
+      setLicenseActive(true);
+      setLicenseType('trial');
+      setTrialDaysLeft(5);
+      setTrialUsed(true);
+    }
   };
 
   const attemptActivation = async () => {
@@ -2205,6 +2398,7 @@ start "" "${currentUrl}"
       const resp = await window.electronAPI.validateLicense(cleaned);
       if (resp.ok) {
         setLicenseActive(true);
+        setLicenseType(resp.type || (resp.isLifetime ? 'lifetime' : 'annual'));
         setLicenseAPIErrorText('');
       } else {
         setLicenseError(true);
@@ -2213,14 +2407,51 @@ start "" "${currentUrl}"
           setLicenseAPIErrorText('This license has been refunded and is no longer valid.');
         } else if (err.includes('already activated') || err.includes('another device')) {
           setLicenseAPIErrorText('This license key is already activated on another device. Contact support to transfer.');
+        } else if (err.includes('expired')) {
+          setLicenseAPIErrorText('This license key has expired. Please renew your subscription or purchase a new key at overdesk.store.');
         } else {
-          setLicenseAPIErrorText('Invalid Key, get key from Gumroad');
+          setLicenseAPIErrorText(err || 'Invalid license key. Purchase a valid key at overdesk.store');
         }
       }
     } else {
-      // Fallback bypass mode on standard web preview
+      // Fallback web preview test key activation
+      const isAnnual = cleaned.toLowerCase().includes('annual');
+      const type = isAnnual ? 'annual' : 'lifetime';
+      const expiresAt = isAnnual ? Date.now() + (365 * 24 * 60 * 60 * 1000) : null;
+
+      localStorage.setItem('fm_license_key', cleaned);
+      localStorage.setItem('fm_license_type', type);
+      if (expiresAt) {
+        localStorage.setItem('fm_license_expires_at', expiresAt.toString());
+      } else {
+        localStorage.removeItem('fm_license_expires_at');
+      }
+
       setLicenseActive(true);
+      setLicenseType(type);
       setLicenseAPIErrorText('');
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    setUpdateStatusText('Checking for updates...');
+    if (window.electronAPI && window.electronAPI.checkForUpdates) {
+      try {
+        const res = await window.electronAPI.checkForUpdates();
+        if (!res.ok) {
+          setUpdateStatusText('You are using the latest version (v1.0.1).');
+        }
+      } catch (err) {
+        setUpdateStatusText('You are using the latest version (v1.0.1).');
+      } finally {
+        setCheckingUpdate(false);
+      }
+    } else {
+      setTimeout(() => {
+        setCheckingUpdate(false);
+        setUpdateStatusText('You are using the latest version (v1.0.1).');
+      }, 1000);
     }
   };
 
@@ -2855,20 +3086,17 @@ start "" "${currentUrl}"
               className="license-logo" 
               src={overdeskLogo} 
               alt="Overdesk Everyone Logo" 
-              style={{ width: '88px', height: '88px', objectFit: 'contain', marginBottom: '2px' }}
+              style={{ width: '120px', height: '120px', objectFit: 'contain', marginBottom: '0px' }}
               referrerPolicy="no-referrer"
             />
             <div className="license-title">Overdesk Everyone</div>
-            <div className="license-sub">
-              Enter your license key to activate.
-              <br />
-              Find your license key inside your Gumroad purchase receipt.
-            </div>
+
+            {/* License Input Top */}
             <input
               className={`license-input ${licenseError ? 'error' : ''}`}
               id="license-input"
               type="text"
-              placeholder="Enter Gumroad License Key"
+              placeholder="Enter License Key"
               maxLength={100}
               value={licenseInput}
               onChange={handleLicenseInputChange}
@@ -2880,12 +3108,12 @@ start "" "${currentUrl}"
               <div 
                 className="license-api-feedback"
                 style={{
-                  fontSize: '11.5px',
+                  fontSize: '11px',
                   fontWeight: '600',
                   color: licenseError ? '#ff4d4d' : (isLight ? '#0284c7' : '#38bdf8'),
                   textAlign: 'center',
                   marginTop: '-4px',
-                  marginBottom: '4px',
+                  marginBottom: '2px',
                   padding: '0 8px',
                   wordBreak: 'break-word',
                   lineHeight: '1.3'
@@ -2895,13 +3123,38 @@ start "" "${currentUrl}"
               </div>
             )}
             <button className="license-btn" onClick={attemptActivation}>
-              Activate
+              Activate License
             </button>
+
+            <div className="license-divider">— OR —</div>
+
+            {/* Trial Access Flow Under */}
+            {!trialUsed ? (
+              <div className="trial-wrap">
+                <button className="trial-btn" onClick={handleStartTrial}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  Start 5-Day Free Trial
+                </button>
+              </div>
+            ) : (
+              <div className="trial-used-box">
+                ⚠️ Trial expired. Enter a key to continue.
+              </div>
+            )}
             
+            {/* Purchase Direct Link */}
             <div className="license-hint">
-              <span>
-                Get your license key on Gumroad: <a href="https://overdesk.gumroad.com/l/everyone" target="_blank" rel="noreferrer">overdesk.gumroad.com/l/everyone</a>
-              </span>
+              Need a key? Get one at{' '}
+              <a 
+                href="https://overdesk.store" 
+                target="_blank" 
+                rel="noreferrer"
+                style={{ textDecoration: 'underline', fontWeight: 700 }}
+              >
+                overdesk.store
+              </a>
             </div>
           </div>
         ) : (
@@ -3867,6 +4120,41 @@ start "" "${currentUrl}"
                   </svg>
                   {resetConfirming ? '⚠️ Click again or Double-Click to Reset' : 'Double-Click to Reset App'}
                 </button>
+              </div>
+
+              {/* App Version & Silent Update Check at bottom of Settings */}
+              <div style={{ borderTop: '1px solid var(--divider)', paddingTop: '10px', marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '600', color: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
+                    Overdesk Everyone v1.0.1
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCheckForUpdates}
+                    disabled={checkingUpdate}
+                    style={{
+                      fontSize: '9.5px',
+                      fontWeight: '600',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      background: isLight ? 'rgba(2, 132, 199, 0.1)' : 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid ' + (isLight ? 'rgba(2, 132, 199, 0.3)' : 'rgba(56, 189, 248, 0.3)'),
+                      color: isLight ? '#0284c7' : '#38bdf8',
+                      cursor: checkingUpdate ? 'wait' : 'pointer',
+                      transition: 'all 0.15s ease',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+                  </button>
+                </div>
+                {updateStatusText && (
+                  <div style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)', fontWeight: '500', textAlign: 'center' }}>
+                    {updateStatusText}
+                  </div>
+                )}
               </div>
             </div>
           </div>
