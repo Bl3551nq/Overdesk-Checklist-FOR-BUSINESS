@@ -16,8 +16,8 @@ let configCache = null;
 let isProgrammaticBoundsUpdate = false;
 let programmaticTimeout = null;
 let isScaling = false;
-let scaleCenterX = null;
-let scaleCenterY = null;
+let scaleAnchorX = null;
+let scaleAnchorY = null;
 const configPath = path.join(app.getPath('userData'), 'app-config.json');
 
 // Helper to read config
@@ -172,17 +172,23 @@ function createWindow() {
 }
 
 function createTray() {
+  const customTrayPath = path.join(app.getPath('userData'), 'tray-icon.png');
   const customIconPath = path.join(app.getPath('userData'), 'icon.png');
+  const packagedTrayPath = path.join(__dirname, 'tray-icon.png');
   const packagedIconPath = path.join(__dirname, 'icon.png');
-  let iconPath = packagedIconPath;
 
-  if (fs.existsSync(customIconPath)) {
+  let iconPath = packagedTrayPath;
+  if (fs.existsSync(customTrayPath)) {
+    iconPath = customTrayPath;
+  } else if (!fs.existsSync(packagedTrayPath) && fs.existsSync(customIconPath)) {
     iconPath = customIconPath;
+  } else if (!fs.existsSync(packagedTrayPath) && fs.existsSync(packagedIconPath)) {
+    iconPath = packagedIconPath;
   }
 
   let trayIcon;
   if (fs.existsSync(iconPath)) {
-    // Windows & Linux support High-DPI taskbar tray icons (up to 64x64). macOS menu bar icon standard is 24x24.
+    // Windows & Linux support High-DPI taskbar tray icons (up to 64x64). macOS menu bar icon standard is 22x22.
     if (process.platform === 'win32') {
       trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32, quality: 'best' });
     } else if (process.platform === 'darwin') {
@@ -778,22 +784,15 @@ ipcMain.on('card-bounds', (event, bounds) => {
     
     const isScaleChanged = cachedScale !== null && Math.abs(activeScale - cachedScale) > 0.01;
     
-    if (isScaling && scaleCenterX !== null && scaleCenterY !== null) {
-      // Anchors the absolute center of the window during active drag-and-resize scaling
-      newX = Math.round(scaleCenterX - targetW / 2);
-      newY = Math.round(scaleCenterY - targetH / 2);
-      cachedScale = activeScale;
-    } else if (isScaleChanged) {
-      // Anchors the visual center of the window if scale changed discretely (e.g. from settings option)
-      const centerX = currentX + currentW / 2;
-      const centerY = currentY + currentH / 2;
-      newX = Math.round(centerX - targetW / 2);
-      newY = Math.round(centerY - targetH / 2);
+    if (isScaling && scaleAnchorX !== null && scaleAnchorY !== null) {
+      // Anchors the top-left of the window during active drag-and-resize scaling so it scales strictly from the bottom
+      newX = scaleAnchorX;
+      newY = scaleAnchorY;
       cachedScale = activeScale;
     } else {
-      // Keeps the top-left of the window perfectly constant for normal height updates 
-      // (minimizing/expanding, adding/removing checklist items, settings toggles)
-      // to guarantee zero visual shift mismatch and zero flickering.
+      // Keeps the top-left of the window perfectly constant for all scale changes and height updates 
+      // (minimizing/expanding, adding/removing checklist items, scale sliders/buttons, settings toggles)
+      // so the app scales strictly from the bottom down without top/side position shift.
       newX = currentX;
       newY = currentY;
       cachedScale = activeScale;
@@ -825,16 +824,15 @@ ipcMain.on('scale-start', () => {
   isScaling = true;
   if (mainWindow) {
     const [x, y] = mainWindow.getPosition();
-    const [w, h] = mainWindow.getSize();
-    scaleCenterX = x + w / 2;
-    scaleCenterY = y + h / 2;
+    scaleAnchorX = x;
+    scaleAnchorY = y;
   }
 });
 
 ipcMain.on('scale-end', (event, scale) => {
   isScaling = false;
-  scaleCenterX = null;
-  scaleCenterY = null;
+  scaleAnchorX = null;
+  scaleAnchorY = null;
   writeConfig({ scale });
 });
 
@@ -852,14 +850,18 @@ ipcMain.on('save-icon', (event, dataUrl) => {
     
     // Dynamically update tray icon
     if (tray) {
+      const customTrayPath = path.join(app.getPath('userData'), 'tray-icon.png');
+      const packagedTrayPath = path.join(__dirname, 'tray-icon.png');
+      const trayPath = fs.existsSync(customTrayPath) ? customTrayPath : (fs.existsSync(packagedTrayPath) ? packagedTrayPath : customIconPath);
+
       let trayImg;
       if (process.platform === 'win32') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 32, height: 32, quality: 'best' });
+        trayImg = nativeImage.createFromPath(trayPath).resize({ width: 32, height: 32, quality: 'best' });
       } else if (process.platform === 'darwin') {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 22, height: 22, quality: 'best' });
+        trayImg = nativeImage.createFromPath(trayPath).resize({ width: 22, height: 22, quality: 'best' });
         trayImg.setTemplateImage(true);
       } else {
-        trayImg = nativeImage.createFromPath(customIconPath).resize({ width: 32, height: 32, quality: 'best' });
+        trayImg = nativeImage.createFromPath(trayPath).resize({ width: 32, height: 32, quality: 'best' });
       }
       tray.setImage(trayImg);
     }

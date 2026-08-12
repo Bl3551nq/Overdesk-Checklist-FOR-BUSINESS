@@ -22,6 +22,7 @@ export interface CalendarReminderViewProps {
   accentSoft?: string;
   modeColor?: string;
   wallpaperUrl?: string;
+  wallpaperOpacity?: number;
   onSaveReminder: (reminder: Omit<TaskReminder, 'id'>) => void;
   onDeleteReminder: (taskIdx: number, modeKey?: string) => void;
   onDeleteAllReminders?: () => void;
@@ -331,6 +332,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   accentSoft = 'rgba(60, 170, 255, 0.2)',
   modeColor = '#38bdf8',
   wallpaperUrl,
+  wallpaperOpacity = 100,
   onSaveReminder,
   onDeleteReminder,
   onDeleteAllReminders,
@@ -353,10 +355,13 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   // Custom Time Picker expanded state
   const [showCustomTimePicker, setShowCustomTimePicker] = useState<boolean>(false);
 
-  // Note state
+  // Note state (max 200 chars, no counter displayed)
   const [reminderNote, setReminderNote] = useState<string>(
-    existingReminder?.note || ''
+    existingReminder?.note ? existingReminder.note.slice(0, 200) : ''
   );
+
+  // Ref for note input box to handle double-click editing from preview card
+  const noteInputRef = useRef<HTMLInputElement>(null);
 
   // Time conversion helpers (12-hour AM/PM <-> 24-hour string)
   const parseTimeTo12h = (time24: string) => {
@@ -483,7 +488,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
       taskIdx,
       date: ymd,
       time: selectedTime || '09:00',
-      note: reminderNote,
+      note: reminderNote.slice(0, 200),
       enabled: true,
       triggered: false,
     });
@@ -491,6 +496,13 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
     setTimeout(() => {
       onClose();
     }, 600);
+  };
+
+  const handleClear = () => {
+    onDeleteReminder(taskIdx);
+    setReminderNote('');
+    setSelectedTime('09:00');
+    setShowCustomTimePicker(false);
   };
 
   const weeklyDays = getWeeklyDays();
@@ -509,7 +521,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
         padding: '16px 18px',
         boxSizing: 'border-box',
         borderRadius: '32px',
-        background: 'none',
+        background: isLight ? '#f1f5f9' : '#080d1a',
         border: isLight ? '1px solid rgba(255, 255, 255, 0.9)' : '1px solid rgba(255, 255, 255, 0.18)',
         boxShadow: isLight
           ? '0 6px 24px rgba(0, 0, 0, 0.06), 0 0 1px 1px rgba(255, 255, 255, 0.9) inset'
@@ -522,36 +534,39 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
       {/* Background Wallpaper Layer matching Home Page */}
       {wallpaperUrl ? (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '32px', zIndex: 0, pointerEvents: 'none' }}>
-          {isVideoUrl(wallpaperUrl) ? (
-            <video
-              src={wallpaperUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                backgroundImage: `url(${wallpaperUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            />
-          )}
-          {/* Glassy translucent overlay */}
+          {/* Solid base underneath wallpaper to block home page/checklist */}
+          <div style={{ position: 'absolute', inset: 0, background: isLight ? '#f1f5f9' : '#080d1a' }} />
+          
+          <div style={{ position: 'absolute', inset: 0, opacity: (wallpaperOpacity / 100) }}>
+            {isVideoUrl(wallpaperUrl) ? (
+              <video
+                src={wallpaperUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundImage: `url(${wallpaperUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
+            )}
+          </div>
+          {/* Glassy overlay without backdropFilter so underneath DOM elements don't bleed through */}
           <div
             style={{
               position: 'absolute',
               inset: 0,
               background: isLight
-                ? 'rgba(240, 244, 252, 0.78)'
-                : 'radial-gradient(circle at 10% 10%, rgba(10, 16, 26, 0.95) 0%, rgba(4, 7, 13, 0.98) 100%)',
-              backdropFilter: 'blur(35px) saturate(200%)',
-              WebkitBackdropFilter: 'blur(35px) saturate(200%)',
+                ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.58) 100%)'
+                : 'linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.55) 100%)',
             }}
           />
         </div>
@@ -884,7 +899,11 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                         const d = new Date(event.date + 'T00:00:00');
                         if (!isNaN(d.getTime())) setSelectedDateObj(d);
                         if (event.time) setSelectedTime(event.time);
-                        if (event.note) setReminderNote(event.note);
+                        if (event.note) {
+                          setReminderNote(event.note.slice(0, 200));
+                        } else {
+                          setReminderNote('');
+                        }
                         setShowAllEvents(false);
                       }}
                       style={{
@@ -898,14 +917,17 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                         boxShadow: isLight ? '0 1px 4px rgba(0, 0, 0, 0.04)' : '0 4px 16px rgba(0, 0, 0, 0.45)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
+                        overflow: 'hidden',
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
                       }}
                       title="Click to select this event date in calendar"
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: isLight ? '#0f172a' : '#ffffff', letterSpacing: '-0.01em', wordBreak: 'break-word' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', minWidth: 0 }}>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: isLight ? '#0f172a' : '#ffffff', letterSpacing: '-0.01em', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0, flex: 1 }}>
                           {event.taskText}
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           <span
                             style={{
                               fontSize: '10.5px',
@@ -965,8 +987,20 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                       </div>
 
                       {event.note && (
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: isLight ? '#334155' : '#f1f5f9', fontWeight: 600, fontStyle: 'italic', lineHeight: 1.35 }}>
-                          "{event.note}"
+                        <p style={{
+                          margin: '2px 0 0',
+                          fontSize: '11.5px',
+                          color: isLight ? '#334155' : '#f1f5f9',
+                          fontWeight: 600,
+                          fontStyle: 'italic',
+                          lineHeight: 1.35,
+                          wordBreak: 'break-word',
+                          overflowWrap: 'anywhere',
+                          maxWidth: '100%',
+                          whiteSpace: 'pre-wrap',
+                          boxSizing: 'border-box',
+                        }}>
+                          {event.note}
                         </p>
                       )}
                     </div>
@@ -1065,7 +1099,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
               style={{
                 position: 'relative',
                 borderRadius: '20px',
-                background: isLight ? 'rgba(255, 255, 255, 0.55)' : 'rgba(15, 23, 42, 0.75)',
+                background: isLight ? 'rgba(255, 255, 255, 0.42)' : 'rgba(15, 23, 42, 0.48)',
                 border: isLight ? '1px solid rgba(255, 255, 255, 0.7)' : '1px solid rgba(255, 255, 255, 0.15)',
                 padding: '10px 6px 12px',
                 backdropFilter: 'blur(16px)',
@@ -1183,7 +1217,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
             style={{
               margin: '2px 0 8px',
               borderRadius: '20px',
-              background: isLight ? 'rgba(255, 255, 255, 0.55)' : 'rgba(15, 23, 42, 0.75)',
+              background: isLight ? 'rgba(255, 255, 255, 0.42)' : 'rgba(15, 23, 42, 0.48)',
               border: isLight ? '1px solid rgba(255, 255, 255, 0.7)' : '1px solid rgba(255, 255, 255, 0.15)',
               padding: '10px 8px',
               backdropFilter: 'blur(16px)',
@@ -1307,16 +1341,77 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
           </div>
         )}
 
+        {/* Middle Space Note Preview for the individual checklist item */}
+        {!showAllEvents && reminderNote.trim().length > 0 && (
+          <div
+            onDoubleClick={() => {
+              if (noteInputRef.current) {
+                noteInputRef.current.focus();
+                noteInputRef.current.select();
+              }
+            }}
+            onClick={() => {
+              if (noteInputRef.current) {
+                noteInputRef.current.focus();
+              }
+            }}
+            title="Double-click to edit note in box below"
+            style={{
+              margin: '6px 0 auto',
+              padding: '8px 12px',
+              borderRadius: '14px',
+              background: isLight ? 'rgba(255, 255, 255, 0.52)' : 'rgba(15, 23, 42, 0.58)',
+              border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.18)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: isLight ? '0 2px 8px rgba(0, 0, 0, 0.03)' : '0 4px 16px rgba(0, 0, 0, 0.35)',
+              cursor: 'pointer',
+              maxWidth: '100%',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              transition: 'all 0.15s ease',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', opacity: 0.8 }}>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: modeColor }}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: isLight ? '#0f172a' : '#ffffff' }}>
+                Note Detail
+              </span>
+              <span style={{ fontSize: '9px', opacity: 0.6, marginLeft: 'auto', fontStyle: 'italic' }}>
+                Double-click to edit
+              </span>
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: '11.5px',
+                fontWeight: 600,
+                color: isLight ? '#1e293b' : '#f1f5f9',
+                lineHeight: 1.4,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {reminderNote}
+            </p>
+          </div>
+        )}
+
         {/* Note and Time Selection Controls - Hidden when showAllEvents is active */}
         {!showAllEvents && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: reminderNote.trim().length > 0 ? '6px' : 'auto', flexShrink: 0 }}>
             {/* Note input field with pencil icon */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: isLight ? 'rgba(255, 255, 255, 0.6)' : 'rgba(10, 16, 28, 0.85)',
+                background: isLight ? 'rgba(255, 255, 255, 0.45)' : 'rgba(10, 16, 28, 0.52)',
                 borderRadius: '12px',
                 padding: '6px 10px',
                 border: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.18)',
@@ -1328,10 +1423,12 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
               </svg>
               <input
+                ref={noteInputRef}
                 type="text"
                 placeholder="Add a note or reminder detail..."
                 value={reminderNote}
-                onChange={(e) => setReminderNote(e.target.value)}
+                maxLength={200}
+                onChange={(e) => setReminderNote(e.target.value.slice(0, 200))}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -1350,7 +1447,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '6px',
-                background: isLight ? 'rgba(255, 255, 255, 0.65)' : 'rgba(10, 16, 28, 0.88)',
+                background: isLight ? 'rgba(255, 255, 255, 0.48)' : 'rgba(10, 16, 28, 0.55)',
                 borderRadius: '16px',
                 padding: '8px 10px',
                 border: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.18)',
@@ -1527,7 +1624,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                   Clear Alarm
                 </button>
               ) : (
-                <span style={{ fontSize: '10px', opacity: 0.6, fontWeight: 500 }}>Alarm rings 3x at target time</span>
+                <div />
               )}
 
               <button

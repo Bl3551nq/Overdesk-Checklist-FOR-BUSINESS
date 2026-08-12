@@ -1472,7 +1472,28 @@ start "" "${currentUrl}"
   };
 
   // License & Trial State
-  const [licenseActive, setLicenseActive] = useState<boolean>(false); // Default false -> License Page default opening screen
+  const [licenseActive, setLicenseActive] = useState<boolean>(() => {
+    try {
+      const cachedActive = localStorage.getItem('fm_license_active');
+      if (cachedActive === '1') return true;
+
+      const localKey = localStorage.getItem('fm_license_key');
+      const localType = localStorage.getItem('fm_license_type');
+      const localExp = localStorage.getItem('fm_license_expires_at');
+      const localTrialStart = localStorage.getItem('fm_trial_start');
+
+      if (localKey) {
+        if (localType === 'lifetime' || !localExp) return true;
+        const expMs = parseInt(localExp, 10);
+        if (!isNaN(expMs) && Date.now() <= expMs) return true;
+      } else if (localTrialStart) {
+        const startMs = parseInt(localTrialStart, 10);
+        const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
+        if (Date.now() <= expMs) return true;
+      }
+    } catch (e) {}
+    return false;
+  });
   const [licenseInput, setLicenseInput] = useState<string>('');
   const [licenseError, setLicenseError] = useState<boolean>(false);
   const [licenseAPIErrorText, setLicenseAPIErrorText] = useState<string>('');
@@ -1497,29 +1518,32 @@ start "" "${currentUrl}"
   // Modular Modes Storage
   const [modes, setModes] = useState<Record<string, ModeDetail>>(() => {
     try {
-      const ver = localStorage.getItem('fm_state_ver');
-      if (ver === '4.0') {
-        const saved = localStorage.getItem('fm_modes');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-            const mergedObj: Record<string, ModeDetail> = {};
-            Object.keys(parsed).forEach((k) => {
-              const def = DEFAULT_MODES[k];
-              const opts = Array.isArray(parsed[k]?.options) && parsed[k].options.length > 0 ? parsed[k].options : (def?.options || []);
-              const baseOpts = Array.isArray(parsed[k]?.baseOptions) && parsed[k].baseOptions.length > 0 ? parsed[k].baseOptions : (def?.baseOptions || [...opts]);
-              mergedObj[k] = {
-                title: parsed[k]?.title || def?.title || k,
-                accent: parsed[k]?.accent || def?.accent || 'rgba(30, 140, 255, 0.9)',
-                soft: parsed[k]?.soft || def?.soft || 'rgba(60, 170, 255, 0.18)',
-                defaultAccent: parsed[k]?.defaultAccent || def?.defaultAccent || 'rgba(30, 140, 255, 0.9)',
-                defaultSoft: parsed[k]?.defaultSoft || def?.defaultSoft || 'rgba(60, 170, 255, 0.18)',
-                options: opts,
-                baseOptions: baseOpts,
-              };
-            });
-            if (Object.keys(mergedObj).length > 0) return mergedObj;
-          }
+      const saved = localStorage.getItem('fm_modes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          const mergedObj: Record<string, ModeDetail> = {};
+          Object.keys(parsed).forEach((k) => {
+            const def = DEFAULT_MODES[k];
+            const opts = Array.isArray(parsed[k]?.options) ? parsed[k].options : (def?.options || []);
+            const baseOpts = Array.isArray(parsed[k]?.baseOptions) ? parsed[k].baseOptions : (def?.baseOptions || [...opts]);
+            mergedObj[k] = {
+              title: parsed[k]?.title || def?.title || k,
+              accent: parsed[k]?.accent || def?.accent || 'rgba(30, 140, 255, 0.9)',
+              soft: parsed[k]?.soft || def?.soft || 'rgba(60, 170, 255, 0.18)',
+              defaultAccent: parsed[k]?.defaultAccent || def?.defaultAccent || 'rgba(30, 140, 255, 0.9)',
+              defaultSoft: parsed[k]?.defaultSoft || def?.defaultSoft || 'rgba(60, 170, 255, 0.18)',
+              options: opts,
+              baseOptions: baseOpts,
+            };
+          });
+          // Ensure default modes exist if not deleted
+          Object.keys(DEFAULT_MODES).forEach((k) => {
+            if (!mergedObj[k]) {
+              mergedObj[k] = DEFAULT_MODES[k];
+            }
+          });
+          if (Object.keys(mergedObj).length > 0) return mergedObj;
         }
       }
     } catch (e) {}
@@ -1529,7 +1553,18 @@ start "" "${currentUrl}"
   // Current selections for each mode
   const [selections, setSelections] = useState<Record<string, number[]>>(() => {
     const defaultSels: Record<string, number[]> = {};
-    Object.keys(DEFAULT_MODES).forEach((m) => {
+    let modeKeys = Object.keys(DEFAULT_MODES);
+    try {
+      const savedModes = localStorage.getItem('fm_modes');
+      if (savedModes) {
+        const parsed = JSON.parse(savedModes);
+        if (parsed && typeof parsed === 'object') {
+          modeKeys = Array.from(new Set([...modeKeys, ...Object.keys(parsed)]));
+        }
+      }
+    } catch (e) {}
+
+    modeKeys.forEach((m) => {
       try {
         const savedS = localStorage.getItem('fm_sel_' + m);
         if (savedS) {
@@ -1547,12 +1582,9 @@ start "" "${currentUrl}"
   // Mode customizer icons assignment
   const [iconAssignments, setIconAssignments] = useState<Record<string, string>>(() => {
     try {
-      const ver = localStorage.getItem('fm_state_ver');
-      if (ver === '4.0') {
-        const saved = localStorage.getItem('fm_icons');
-        if (saved) {
-          return JSON.parse(saved);
-        }
+      const saved = localStorage.getItem('fm_icons');
+      if (saved) {
+        return JSON.parse(saved);
       }
     } catch (e) {}
     return {
@@ -1880,31 +1912,9 @@ start "" "${currentUrl}"
 
   // ── Sync states on load ──
   useEffect(() => {
-    // Clear stale old states if any config mismatch from legacy assets
-    const ver = localStorage.getItem('fm_state_ver');
-    if (ver !== '4.0') {
-      localStorage.removeItem('fm_modes');
-      localStorage.removeItem('fm_theme');
-      localStorage.removeItem('fm_scale');
-      localStorage.removeItem('fm_icons');
-      Object.keys(DEFAULT_MODES).forEach((m) => localStorage.removeItem('fm_sel_' + m));
+    // Ensure state version flag is recorded without wiping user data
+    if (!localStorage.getItem('fm_state_ver')) {
       localStorage.setItem('fm_state_ver', '4.0');
-      setModes(DEFAULT_MODES);
-      setSelections({
-        business: [],
-        life: [],
-        pc: [],
-        sync: [],
-        alerts: [],
-      });
-      setIconAssignments({
-        business: 'briefcase',
-        life: 'home',
-        pc: 'laptop',
-        sync: 'shield',
-        alerts: 'calendar',
-      });
-      setCurrentMode('business');
     }
 
     // Determine stored Theme
@@ -1917,11 +1927,13 @@ start "" "${currentUrl}"
       window.electronAPI.checkLicense().then((res) => {
         if (res.ok) {
           setLicenseActive(true);
+          localStorage.setItem('fm_license_active', '1');
           setLicenseType(res.type || 'lifetime');
           if (res.trialDaysLeft !== undefined) setTrialDaysLeft(res.trialDaysLeft);
           if (res.trialUsed) setTrialUsed(true);
         } else {
           setLicenseActive(false);
+          localStorage.setItem('fm_license_active', '0');
           setLicenseType('none');
           if (res.trialUsed) setTrialUsed(true);
           if (res.expiredMessage) {
@@ -1943,11 +1955,11 @@ start "" "${currentUrl}"
       });
 
       window.electronAPI.onUpdateNotAvailable(() => {
-        setUpdateStatusText('You are using the latest version (v1.0.1).');
+        setUpdateStatusText('You are using the latest version (v1.0.3).');
       });
 
       window.electronAPI.onUpdateError(() => {
-        setUpdateStatusText('App is up to date (v1.0.1).');
+        setUpdateStatusText('App is up to date (v1.0.3).');
       });
     } else {
       // Web / browser preview fallback
@@ -1962,14 +1974,17 @@ start "" "${currentUrl}"
       if (localKey) {
         if (localType === 'lifetime' || !localExp) {
           setLicenseActive(true);
+          localStorage.setItem('fm_license_active', '1');
           setLicenseType('lifetime');
         } else {
           const expMs = parseInt(localExp, 10);
           if (!isNaN(expMs) && Date.now() <= expMs) {
             setLicenseActive(true);
+            localStorage.setItem('fm_license_active', '1');
             setLicenseType('annual');
           } else {
             setLicenseActive(false);
+            localStorage.setItem('fm_license_active', '0');
             setLicenseType('none');
             setLicenseAPIErrorText('Your annual license key has expired. Please enter a valid license or purchase a new one at overdesk.store.');
           }
@@ -1980,17 +1995,20 @@ start "" "${currentUrl}"
         if (Date.now() <= expMs) {
           const daysLeft = Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24));
           setLicenseActive(true);
+          localStorage.setItem('fm_license_active', '1');
           setLicenseType('trial');
           setTrialDaysLeft(daysLeft);
           setTrialUsed(true);
         } else {
           setLicenseActive(false);
+          localStorage.setItem('fm_license_active', '0');
           setLicenseType('none');
           setTrialUsed(true);
           setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
         }
       } else {
         setLicenseActive(false);
+        localStorage.setItem('fm_license_active', '0');
         setLicenseType('none');
       }
     }
@@ -2074,7 +2092,14 @@ start "" "${currentUrl}"
   // Persist items & configuration on updates
   useEffect(() => {
     localStorage.setItem('fm_modes', JSON.stringify(modes));
+    localStorage.setItem('fm_state_ver', '4.0');
   }, [modes]);
+
+  useEffect(() => {
+    Object.keys(selections).forEach((m) => {
+      localStorage.setItem('fm_sel_' + m, JSON.stringify(selections[m] || []));
+    });
+  }, [selections]);
 
   useEffect(() => {
     localStorage.setItem('fm_theme', isLight ? '1' : '0');
@@ -2364,6 +2389,7 @@ start "" "${currentUrl}"
       const res = await window.electronAPI.startTrial();
       if (res.ok) {
         setLicenseActive(true);
+        localStorage.setItem('fm_license_active', '1');
         setLicenseType('trial');
         setTrialDaysLeft(5);
         setTrialUsed(true);
@@ -2377,6 +2403,7 @@ start "" "${currentUrl}"
       const now = Date.now();
       localStorage.setItem('fm_trial_start', now.toString());
       localStorage.setItem('fm_trial_used', '1');
+      localStorage.setItem('fm_license_active', '1');
       setLicenseActive(true);
       setLicenseType('trial');
       setTrialDaysLeft(5);
@@ -2398,6 +2425,7 @@ start "" "${currentUrl}"
       const resp = await window.electronAPI.validateLicense(cleaned);
       if (resp.ok) {
         setLicenseActive(true);
+        localStorage.setItem('fm_license_active', '1');
         setLicenseType(resp.type || (resp.isLifetime ? 'lifetime' : 'annual'));
         setLicenseAPIErrorText('');
       } else {
@@ -2421,6 +2449,7 @@ start "" "${currentUrl}"
 
       localStorage.setItem('fm_license_key', cleaned);
       localStorage.setItem('fm_license_type', type);
+      localStorage.setItem('fm_license_active', '1');
       if (expiresAt) {
         localStorage.setItem('fm_license_expires_at', expiresAt.toString());
       } else {
@@ -2440,25 +2469,64 @@ start "" "${currentUrl}"
       try {
         const res = await window.electronAPI.checkForUpdates();
         if (!res.ok) {
-          setUpdateStatusText('You are using the latest version (v1.0.1).');
+          setUpdateStatusText('You are using the latest version (v1.0.3).');
         }
       } catch (err) {
-        setUpdateStatusText('You are using the latest version (v1.0.1).');
+        setUpdateStatusText('You are using the latest version (v1.0.3).');
       } finally {
         setCheckingUpdate(false);
       }
     } else {
       setTimeout(() => {
         setCheckingUpdate(false);
-        setUpdateStatusText('You are using the latest version (v1.0.1).');
+        setUpdateStatusText('You are using the latest version (v1.0.3).');
       }, 1000);
     }
   };
 
   // ── Switch Active Tab Tab Modes ──
   const handleModeIconClick = (mode: string) => {
-    setEditingTitle(false);
-    setEditingItemIdx(null);
+    if (editingTitle) {
+      const nextVal = titleInputValue.trim() || modes[currentMode]?.title || currentMode;
+      const updatedModes = {
+        ...modes,
+        [currentMode]: {
+          ...modes[currentMode],
+          title: nextVal,
+        },
+      };
+      setModes(updatedModes);
+      localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+      setEditingTitle(false);
+    }
+    if (editingItemIdx !== null && modes[currentMode]) {
+      const idx = editingItemIdx;
+      const oldVal = modes[currentMode].options[idx];
+      const listCopy = [...modes[currentMode].options];
+      const finalVal = editingItemValue.trim() || listCopy[idx];
+      listCopy[idx] = finalVal;
+
+      const baseCopy = [...(modes[currentMode].baseOptions || modes[currentMode].options)];
+      const baseIdx = baseCopy.indexOf(oldVal);
+      if (baseIdx !== -1) {
+        baseCopy[baseIdx] = finalVal;
+      } else if (idx < baseCopy.length) {
+        baseCopy[idx] = finalVal;
+      }
+
+      const updatedModes = {
+        ...modes,
+        [currentMode]: {
+          ...modes[currentMode],
+          options: listCopy,
+          baseOptions: baseCopy,
+        },
+      };
+      setModes(updatedModes);
+      localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
+      setEditingItemIdx(null);
+    }
+
     setCurrentMode(mode);
     if (editMode) {
       // Toggle mode visual configuration overlay
@@ -2587,15 +2655,17 @@ start "" "${currentUrl}"
   };
 
   const commitTitleEditing = () => {
-    if (!editingTitle) return;
-    const nextVal = titleInputValue.trim() || modes[currentMode].title;
-    setModes((prev) => ({
-      ...prev,
+    if (!editingTitle || !modes[currentMode]) return;
+    const nextVal = titleInputValue.trim() || modes[currentMode].title || currentMode;
+    const updatedModes = {
+      ...modes,
       [currentMode]: {
-        ...prev[currentMode],
+        ...modes[currentMode],
         title: nextVal,
       },
-    }));
+    };
+    setModes(updatedModes);
+    localStorage.setItem('fm_modes', JSON.stringify(updatedModes));
     setEditingTitle(false);
   };
 
@@ -2754,26 +2824,36 @@ start "" "${currentUrl}"
 
   // ── Mode customized color-picker operations ──
   const assignModeColor = (targetMode: string, accent: string, soft: string) => {
-    setModes((prev) => ({
-      ...prev,
-      [targetMode]: {
-        ...prev[targetMode],
-        accent,
-        soft,
-      },
-    }));
+    setModes((prev) => {
+      const updated = {
+        ...prev,
+        [targetMode]: {
+          ...prev[targetMode],
+          accent,
+          soft,
+        },
+      };
+      localStorage.setItem('fm_modes', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const resetModeColorToDefault = (targetMode: string) => {
     const defaults = DEFAULT_MODES[targetMode];
-    assignModeColor(targetMode, defaults.defaultAccent, defaults.defaultSoft);
+    if (defaults) {
+      assignModeColor(targetMode, defaults.defaultAccent, defaults.defaultSoft);
+    }
   };
 
   const assignModeIcon = (targetMode: string, iconKey: string) => {
-    setIconAssignments((prev) => ({
-      ...prev,
-      [targetMode]: iconKey,
-    }));
+    setIconAssignments((prev) => {
+      const updated = {
+        ...prev,
+        [targetMode]: iconKey,
+      };
+      localStorage.setItem('fm_icons', JSON.stringify(updated));
+      return updated;
+    });
     setPickerOpen(false);
     setPickerTargetMode(null);
   };
@@ -3650,6 +3730,19 @@ start "" "${currentUrl}"
               style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}
             >
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Move Checked to Bottom</span>
+                <GooeyNav
+                  items={[
+                    { label: 'On', onClick: () => handleAutoMoveCompletedChange(true) },
+                    { label: 'Off', onClick: () => handleAutoMoveCompletedChange(false) },
+                  ]}
+                  activeIndex={autoMoveCompleted ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Window Scale</span>
                 <GooeyNav
                   items={[
@@ -3713,19 +3806,6 @@ start "" "${currentUrl}"
                     { label: 'Static', onClick: () => handleAnimateMinimizedTextChange(false) },
                   ]}
                   activeIndex={animateMinimizedText ? 0 : 1}
-                  particleCount={12}
-                  animationTime={450}
-                />
-              </div>
-
-              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
-                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Move Checked to Bottom</span>
-                <GooeyNav
-                  items={[
-                    { label: 'On', onClick: () => handleAutoMoveCompletedChange(true) },
-                    { label: 'Off', onClick: () => handleAutoMoveCompletedChange(false) },
-                  ]}
-                  activeIndex={autoMoveCompleted ? 0 : 1}
                   particleCount={12}
                   animationTime={450}
                 />
@@ -4126,7 +4206,7 @@ start "" "${currentUrl}"
               <div style={{ borderTop: '1px solid var(--divider)', paddingTop: '10px', marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}>
                   <span style={{ fontSize: '10px', fontWeight: '600', color: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
-                    Overdesk Everyone v1.0.1
+                    Overdesk Everyone v1.0.3
                   </span>
                   <button
                     type="button"
@@ -4385,6 +4465,7 @@ start "" "${currentUrl}"
             accentSoft={modes[currentMode]?.soft}
             modeColor={modes[activeCalendarTask.modeKey]?.accent || '#38bdf8'}
             wallpaperUrl={wallpaperUrl}
+            wallpaperOpacity={wallpaperOpacity}
             onSaveReminder={handleSaveTaskReminder}
             onDeleteReminder={handleDeleteTaskReminder}
             onDeleteAllReminders={handleDeleteAllTaskReminders}
@@ -4454,8 +4535,8 @@ start "" "${currentUrl}"
               </h3>
 
               {activeAlarmModal.note && (
-                <p style={{ margin: '0 0 12px', fontSize: '12px', opacity: 0.8, fontStyle: 'italic' }}>
-                  "{activeAlarmModal.note}"
+                <p style={{ margin: '0 0 12px', fontSize: '12px', opacity: 0.8, fontStyle: 'italic', wordBreak: 'break-word', overflowWrap: 'anywhere', maxWidth: '100%' }}>
+                  {activeAlarmModal.note}
                 </p>
               )}
 

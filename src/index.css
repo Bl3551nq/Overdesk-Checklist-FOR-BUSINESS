@@ -538,17 +538,24 @@ body.editing .icon-btn::after {
    TEXT LABELS & MODE HEADER
 ═══════════════════════════════════════════════════════ */
 .mode-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-dim);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 3px;
   flex-shrink: 0;
   max-height: 25px;
-  opacity: 1;
+  opacity: 0.95;
   overflow: hidden;
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95), 0 2px 10px rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 5;
+}
+.card.light .mode-label {
+  color: #0f172a;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 1), 0 2px 8px rgba(255, 255, 255, 0.9);
 }
 
 .mode-row {
@@ -560,28 +567,8 @@ body.editing .icon-btn::after {
   width: 100%;
   flex-shrink: 0;
   transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Card Content Stacking Layering Above Wallpaper */
-.top-bar,
-.liquid-nav-wrapper,
-.header-section,
-.mode-row,
-.title-wrap,
-.title,
-.title-container-editable,
-.mode-counter,
-.divider,
-.card-body,
-.scroll-area,
-.options,
-.option,
-.opt-text,
-.footer-container,
-.minimized-reminder-view,
-.settings-panel {
   position: relative;
-  z-index: 2;
+  z-index: 5;
 }
 
 .title-wrap {
@@ -603,6 +590,8 @@ body.editing .icon-btn::after {
   overflow: hidden;
   padding-bottom: 0;
   transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 5;
 }
 
 .title-container-editable {
@@ -612,7 +601,8 @@ body.editing .icon-btn::after {
   display: flex;
   align-items: center;
   gap: 6px;
-  overflow: hidden;
+  position: relative;
+  z-index: 5;
 }
 
 .title {
@@ -634,10 +624,12 @@ body.editing .icon-btn::after {
   border-radius: 8px;
   transition: opacity 0.18s, transform 0.18s, color 0.3s;
   cursor: default;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85), 0 2px 12px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95), 0 2px 14px rgba(0, 0, 0, 0.85);
+  position: relative;
+  z-index: 5;
 }
 .card.light .title {
-  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.9), 0 2px 8px rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 1), 0 2px 10px rgba(255, 255, 255, 0.9);
 }
 
 .title.editable {
@@ -677,16 +669,18 @@ body.editing .icon-btn::after {
 
 .mode-counter {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--accent);
-  opacity: 0.95;
+  opacity: 1;
   letter-spacing: 0.02em;
   transition: opacity 0.2s, color 0.3s;
   flex-shrink: 0;
-  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.85);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95), 0 2px 12px rgba(0, 0, 0, 0.85);
+  position: relative;
+  z-index: 5;
 }
 .card.light .mode-counter {
-  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95);
 }
 
 .divider {
@@ -700,9 +694,6 @@ body.editing .icon-btn::after {
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ═══════════════════════════════════════════════════════
-   SCROLL SYSTEM / OPTIONS LIST
-═══════════════════════════════════════════════════════ */
 .card-body {
   overflow: hidden;
   max-height: 600px;
@@ -725,7 +716,6 @@ body.editing .icon-btn::after {
   margin-bottom: 0px;
 }
 
-/* Minimized Reminder View Styling */
 .minimized-reminder-view {
   display: flex;
   flex-direction: column;
@@ -761,7 +751,6 @@ body.editing .icon-btn::after {
   gap: 6px;
 }
 
-/* Fine custom scrollbars for reminder inputs and edit areas */
 .minimized-reminder-input::-webkit-scrollbar,
 .calendar-scroll-body::-webkit-scrollbar,
 .fine-scrollbar::-webkit-scrollbar {
@@ -813,9 +802,6 @@ body.editing .icon-btn::after {
   stroke-width: 2;
 }
 
-/* ═══════════════════════════════════════════════════════
-   EVERYDAY REMINDER (MINIMIZED VIEW)
-═══════════════════════════════════════════════════════ */
 @keyframes reminderPulse10s {
   0%, 82%, 100% {
     transform: scale(1);
@@ -840,20 +826,6 @@ body.editing .icon-btn::after {
 
 .card.light .minimized-reminder-text {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-
-/* No background highlight on hover for reminder text display wrap */
-
-.reminder-text-display-wrap .reminder-edit-hint {
-  opacity: 0;
-  transform: translateY(3px);
-  transition: opacity 0.22s ease, transform 0.22s ease;
-  pointer-events: none;
-}
-
-.reminder-text-display-wrap:hover .reminder-edit-hint {
-  opacity: 0.75;
-  transform: translateY(0);
 }
 
 .scroll-area {
