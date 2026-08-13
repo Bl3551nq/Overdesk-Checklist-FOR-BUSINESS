@@ -831,6 +831,10 @@ start "" "${currentUrl}"
 
   const handleSaveTaskReminder = (reminderData: Omit<TaskReminder, 'id'>) => {
     const remKey = `${reminderData.modeKey}_${reminderData.taskIdx}`;
+    if (!reminderData.time || reminderData.time.trim() === '') {
+      handleDeleteTaskReminder(reminderData.taskIdx, reminderData.modeKey);
+      return;
+    }
     const newRem: TaskReminder = {
       ...reminderData,
       id: remKey,
@@ -844,11 +848,28 @@ start "" "${currentUrl}"
   };
 
   const handleDeleteTaskReminder = (taskIdx: number, mKey?: string) => {
-    const targetMode = mKey || activeCalendarTask?.modeKey;
+    const targetMode = mKey || activeCalendarTask?.modeKey || currentMode;
     if (!targetMode) return;
     const remKey = `${targetMode}_${taskIdx}`;
+    const targetTaskText =
+      (activeCalendarTask?.modeKey === targetMode && activeCalendarTask.taskIdx === taskIdx)
+        ? activeCalendarTask.taskText
+        : (modes[targetMode]?.options?.[taskIdx] || activeCalendarTask?.taskText);
+
     const updated = { ...taskReminders };
-    delete updated[remKey];
+
+    Object.keys(updated).forEach((k) => {
+      const r = updated[k];
+      if (
+        k === remKey ||
+        (r && r.modeKey === targetMode && r.taskIdx === taskIdx) ||
+        (r && targetTaskText && r.modeKey === targetMode && r.taskText === targetTaskText) ||
+        (r && r.modeKey === targetMode && !modes[targetMode]?.options?.[r.taskIdx])
+      ) {
+        delete updated[k];
+      }
+    });
+
     setTaskReminders(updated);
     localStorage.setItem('fm_task_reminders', JSON.stringify(updated));
   };
@@ -4459,7 +4480,12 @@ start "" "${currentUrl}"
             modeKey={activeCalendarTask.modeKey}
             taskText={activeCalendarTask.taskText}
             taskIdx={activeCalendarTask.taskIdx}
-            existingReminder={taskReminders[`${activeCalendarTask.modeKey}_${activeCalendarTask.taskIdx}`]}
+            existingReminder={
+              taskReminders[`${activeCalendarTask.modeKey}_${activeCalendarTask.taskIdx}`] ||
+              (Object.values(taskReminders).find(
+                (r) => (r as TaskReminder).modeKey === activeCalendarTask.modeKey && (r as TaskReminder).taskText === activeCalendarTask.taskText
+              ) as TaskReminder | undefined)
+            }
             allReminders={taskReminders}
             isLight={isLight}
             accentSoft={modes[currentMode]?.soft}
@@ -5102,7 +5128,7 @@ start "" "${currentUrl}"
                     {/* Clock Icon button to open Calendar Reminder page */}
                     {!isEditingItem && (() => {
                       const modeAccent = modes[currentMode]?.accent || '#3b82f6';
-                      const hasActiveReminder = itemReminder && itemReminder.enabled;
+                      const hasActiveReminder = !!(itemReminder && itemReminder.enabled && itemReminder.time && itemReminder.time.trim() !== '');
                       return (
                         <button
                           className={`option-clock-btn ${hasActiveReminder ? 'has-reminder' : ''}`}

@@ -323,7 +323,7 @@ function GlassyWheelTimePicker({
 }
 
 export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
-  modeKey: _modeKey,
+  modeKey,
   taskText,
   taskIdx,
   existingReminder,
@@ -349,7 +349,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   
   // Time state (HH:MM format)
   const [selectedTime, setSelectedTime] = useState<string>(
-    existingReminder?.time || '09:00'
+    existingReminder?.time || ''
   );
 
   // Custom Time Picker expanded state
@@ -386,6 +386,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   };
 
   const formatDisplay12h = (time24: string): string => {
+    if (!time24) return 'Set Time';
     const { h12, min, period } = parseTimeTo12h(time24);
     return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${period}`;
   };
@@ -481,13 +482,22 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   };
 
   const handleSave = () => {
+    if (!selectedTime || selectedTime.trim() === '') {
+      onDeleteReminder(taskIdx, modeKey);
+      setSavedSuccess(true);
+      setTimeout(() => {
+        onClose();
+      }, 300);
+      return;
+    }
+
     const ymd = formatYMD(selectedDateObj);
     onSaveReminder({
-      modeKey: _modeKey,
+      modeKey,
       taskText,
       taskIdx,
       date: ymd,
-      time: selectedTime || '09:00',
+      time: selectedTime,
       note: reminderNote.slice(0, 200),
       enabled: true,
       triggered: false,
@@ -499,10 +509,11 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   };
 
   const handleClear = () => {
-    onDeleteReminder(taskIdx);
+    onDeleteReminder(taskIdx, modeKey);
     setReminderNote('');
-    setSelectedTime('09:00');
+    setSelectedTime('');
     setShowCustomTimePicker(false);
+    onClose();
   };
 
   const weeklyDays = getWeeklyDays();
@@ -1607,9 +1618,9 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
 
             {/* Action Bar (Save / Delete / Success) */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '6px', marginBottom: '4px', paddingBottom: '8px' }}>
-              {existingReminder ? (
+              {existingReminder || selectedTime || reminderNote ? (
                 <button
-                  onClick={() => onDeleteReminder(taskIdx)}
+                  onClick={handleClear}
                   style={{
                     background: 'rgba(239, 68, 68, 0.2)',
                     border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -1621,7 +1632,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                     cursor: 'pointer',
                   }}
                 >
-                  Clear Alarm
+                  Clear
                 </button>
               ) : (
                 <div />

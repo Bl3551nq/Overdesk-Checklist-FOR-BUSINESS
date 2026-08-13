@@ -2,9 +2,11 @@ name: Build & Release Overdesk Everyone
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
-
   workflow_dispatch:
 
 permissions:
@@ -12,7 +14,6 @@ permissions:
 
 jobs:
   build:
-    name: Build Windows Installer
     runs-on: windows-latest
 
     steps:
@@ -23,15 +24,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install Dependencies
+      - name: Install System Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Web Application
+      - name: Build Web Application (React/Vite)
         run: npm run build
 
-      - name: Build and Publish Windows Release
+      - name: Build Windows Executables (Electron Builder)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Overdesk-Everyone-exe
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.yml
+          if-no-files-found: warn
