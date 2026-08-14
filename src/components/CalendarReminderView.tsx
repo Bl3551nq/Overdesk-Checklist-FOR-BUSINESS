@@ -414,9 +414,42 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   const hasReminderOnDate = (d: Date): boolean => {
     const ymd = formatYMD(d);
     if (allReminders) {
-      return (Object.values(allReminders) as TaskReminder[]).some((r) => r && r.enabled && r.date === ymd);
+      return (Object.values(allReminders) as TaskReminder[]).some((r) => r && r.enabled && !r.triggered && r.date === ymd);
     }
-    return existingReminder?.date === ymd && existingReminder.enabled;
+    return existingReminder?.date === ymd && existingReminder.enabled && !existingReminder.triggered;
+  };
+
+  // Helper to retrieve reminders scheduled for the currently selected date
+  const getRemindersForSelectedDate = (): TaskReminder[] => {
+    const ymd = formatYMD(selectedDateObj);
+    const remindersMap: Record<string, TaskReminder> = allReminders || (existingReminder ? { [existingReminder.id]: existingReminder } : {});
+    const list: TaskReminder[] = (Object.values(remindersMap) as TaskReminder[]).filter(
+      (r) => r && r.enabled && !r.triggered && r.date === ymd
+    );
+    list.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    return list;
+  };
+
+  // Helper to switch selected date and synchronize time/note for current task on that date
+  const handleSelectDate = (newDate: Date) => {
+    setSelectedDateObj(newDate);
+    setShowCustomTimePicker(false);
+
+    const ymd = formatYMD(newDate);
+    const remindersMap: Record<string, TaskReminder> = allReminders || (existingReminder ? { [existingReminder.id]: existingReminder } : {});
+
+    // Check if the current task has a reminder on this selected date
+    const matchingReminderForThisTask = (Object.values(remindersMap) as TaskReminder[]).find(
+      (r) => r && r.enabled && !r.triggered && r.date === ymd && r.modeKey === modeKey && (r.taskIdx === taskIdx || (taskText && r.taskText === taskText))
+    );
+
+    if (matchingReminderForThisTask) {
+      setSelectedTime(matchingReminderForThisTask.time || '');
+      setReminderNote(matchingReminderForThisTask.note ? matchingReminderForThisTask.note.slice(0, 200) : '');
+    } else {
+      setSelectedTime('');
+      setReminderNote('');
+    }
   };
 
   // Helper to retrieve all pending events sorted chronologically from current date to farthest date
@@ -452,7 +485,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   const handleShiftWeek = (deltaDays: number) => {
     const next = new Date(selectedDateObj);
     next.setDate(next.getDate() + deltaDays);
-    setSelectedDateObj(next);
+    handleSelectDate(next);
   };
 
   // Generate calendar days for monthly view
@@ -478,7 +511,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
   const handleShiftMonth = (deltaMonths: number) => {
     const next = new Date(selectedDateObj);
     next.setMonth(next.getMonth() + deltaMonths);
-    setSelectedDateObj(next);
+    handleSelectDate(next);
   };
 
   const handleSave = () => {
@@ -1077,7 +1110,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 ‹ Prev Week
               </button>
               <button
-                onClick={() => setSelectedDateObj(new Date())}
+                onClick={() => handleSelectDate(new Date())}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -1174,7 +1207,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                   return (
                     <div
                       key={i}
-                      onClick={() => setSelectedDateObj(d)}
+                      onClick={() => handleSelectDate(d)}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -1323,7 +1356,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 return (
                   <div
                     key={i}
-                    onClick={() => setSelectedDateObj(d)}
+                    onClick={() => handleSelectDate(d)}
                     style={{
                       width: '28px',
                       height: '28px',
@@ -1352,64 +1385,225 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
           </div>
         )}
 
-        {/* Middle Space Note Preview for the individual checklist item */}
-        {!showAllEvents && reminderNote.trim().length > 0 && (
+        {/* Middle Space: Reminders and Notes for the Selected Date (Supports multiple reminders on one day) */}
+        {!showAllEvents && (
           <div
-            onDoubleClick={() => {
-              if (noteInputRef.current) {
-                noteInputRef.current.focus();
-                noteInputRef.current.select();
-              }
-            }}
-            onClick={() => {
-              if (noteInputRef.current) {
-                noteInputRef.current.focus();
-              }
-            }}
-            title="Double-click to edit note in box below"
+            className="no-scrollbar"
             style={{
-              margin: '6px 0 auto',
-              padding: '8px 12px',
-              borderRadius: '14px',
-              background: isLight ? 'rgba(255, 255, 255, 0.52)' : 'rgba(15, 23, 42, 0.58)',
-              border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(12px)',
-              boxShadow: isLight ? '0 2px 8px rgba(0, 0, 0, 0.03)' : '0 4px 16px rgba(0, 0, 0, 0.35)',
-              cursor: 'pointer',
-              maxWidth: '100%',
-              wordBreak: 'break-word',
-              overflowWrap: 'anywhere',
-              transition: 'all 0.15s ease',
-              boxSizing: 'border-box',
+              margin: '4px 0 auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              maxHeight: '140px',
+              minHeight: '44px',
+              overflowY: 'auto',
+              flex: 1,
+              paddingRight: '2px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', opacity: 0.8 }}>
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: modeColor }}>
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-              <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: isLight ? '#0f172a' : '#ffffff' }}>
-                Note Detail
-              </span>
-              <span style={{ fontSize: '9px', opacity: 0.6, marginLeft: 'auto', fontStyle: 'italic' }}>
-                Double-click to edit
-              </span>
+            {/* Header showing selected day label and count */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: isLight ? '#334155' : '#e2e8f0' }}>
+                  {isSameDay(selectedDateObj, new Date()) ? "Today's Reminders" : `${MONTH_NAMES[selectedDateObj.getMonth()]} ${selectedDateObj.getDate()} Reminders`}
+                </span>
+                {getRemindersForSelectedDate().length > 0 && (
+                  <span
+                    style={{
+                      fontSize: '9.5px',
+                      fontWeight: 800,
+                      background: modeColor,
+                      color: '#ffffff',
+                      borderRadius: '99px',
+                      padding: '1px 6px',
+                      lineHeight: '13px',
+                    }}
+                  >
+                    {getRemindersForSelectedDate().length}
+                  </span>
+                )}
+              </div>
             </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '11.5px',
-                fontWeight: 600,
-                color: isLight ? '#1e293b' : '#f1f5f9',
-                lineHeight: 1.4,
-                whiteSpace: 'pre-wrap',
-              }}
-            >
-              {reminderNote}
-            </p>
+
+            {getRemindersForSelectedDate().length > 0 ? (
+              getRemindersForSelectedDate().map((r, idx) => {
+                const isCurrentTask = r.modeKey === modeKey && (r.taskIdx === taskIdx || (taskText && r.taskText === taskText));
+                return (
+                  <div
+                    key={r.id || idx}
+                    onClick={() => {
+                      if (r.time) setSelectedTime(r.time);
+                      if (r.note) setReminderNote(r.note.slice(0, 200));
+                    }}
+                    style={{
+                      padding: '7px 10px',
+                      borderRadius: '12px',
+                      background: isCurrentTask
+                        ? (isLight ? 'rgba(255, 255, 255, 0.88)' : 'rgba(15, 23, 42, 0.88)')
+                        : (isLight ? 'rgba(255, 255, 255, 0.52)' : 'rgba(15, 23, 42, 0.58)'),
+                      border: isCurrentTask
+                        ? `1.5px solid ${modeColor}`
+                        : (isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.18)'),
+                      backdropFilter: 'blur(12px)',
+                      boxShadow: isLight ? '0 2px 6px rgba(0, 0, 0, 0.03)' : '0 4px 14px rgba(0, 0, 0, 0.3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }}
+                    title="Click to load this reminder into edit controls below"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                      <span style={{ fontSize: '11.5px', fontWeight: 800, color: isLight ? '#0f172a' : '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {r.taskText}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            color: modeColor,
+                            background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.12)',
+                            borderRadius: '6px',
+                            padding: '2px 6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          {r.time}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteReminder(r.taskIdx, r.modeKey);
+                            if (isCurrentTask) {
+                              setSelectedTime('');
+                              setReminderNote('');
+                            }
+                          }}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#f87171',
+                            borderRadius: '5px',
+                            padding: '2px 4px',
+                            fontSize: '9.5px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title="Delete this reminder"
+                        >
+                          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {r.note && (
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: isLight ? '#334155' : '#f1f5f9',
+                          fontStyle: 'italic',
+                          lineHeight: 1.35,
+                          wordBreak: 'break-word',
+                          overflowWrap: 'anywhere',
+                          whiteSpace: 'pre-wrap',
+                        }}
+                      >
+                        {r.note}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            ) : reminderNote.trim().length > 0 ? (
+              /* If currently typing a note for this date */
+              <div
+                onDoubleClick={() => {
+                  if (noteInputRef.current) {
+                    noteInputRef.current.focus();
+                    noteInputRef.current.select();
+                  }
+                }}
+                onClick={() => {
+                  if (noteInputRef.current) {
+                    noteInputRef.current.focus();
+                  }
+                }}
+                title="Double-click to edit note in box below"
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: '12px',
+                  background: isLight ? 'rgba(255, 255, 255, 0.52)' : 'rgba(15, 23, 42, 0.58)',
+                  border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: isLight ? '0 2px 8px rgba(0, 0, 0, 0.03)' : '0 4px 16px rgba(0, 0, 0, 0.35)',
+                  cursor: 'pointer',
+                  maxWidth: '100%',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px', opacity: 0.8 }}>
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: modeColor }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                  <span style={{ fontSize: '9.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: isLight ? '#0f172a' : '#ffffff' }}>
+                    Note Preview
+                  </span>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: isLight ? '#1e293b' : '#f1f5f9',
+                    lineHeight: 1.35,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {reminderNote}
+                </p>
+              </div>
+            ) : (
+              /* Subtle empty state for date */
+              <div
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '12px',
+                  background: isLight ? 'rgba(255, 255, 255, 0.35)' : 'rgba(15, 23, 42, 0.35)',
+                  border: isLight ? '1px dashed rgba(0,0,0,0.1)' : '1px dashed rgba(255,255,255,0.15)',
+                  textAlign: 'center',
+                  color: isLight ? '#64748b' : '#94a3b8',
+                  fontSize: '10.5px',
+                  fontWeight: 600,
+                }}
+              >
+                No reminders scheduled for this date
+              </div>
+            )}
           </div>
         )}
 
