@@ -30,9 +30,12 @@
       "icon": "electron/icon.png",
       "requestedExecutionLevel": "asInvoker"
     },
-    "publish": {
-      "provider": "github"
-    },
+    "publish": [
+      {
+        "provider": "github",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "dist-electron"
     },

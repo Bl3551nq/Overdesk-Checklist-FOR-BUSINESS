@@ -250,6 +250,8 @@ function createTray() {
 // Configure autoUpdater - silent updates without intrusive popups
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.allowPrerelease = false;
+autoUpdater.allowDowngrade = false;
 
 autoUpdater.on('update-available', (info) => {
   if (mainWindow) {
