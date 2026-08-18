@@ -21,7 +21,7 @@ const PRESET_WALLPAPERS = [
 declare global {
   interface Window {
     electronAPI?: {
-      checkLicense: () => Promise<{
+      checkLicense?: () => Promise<{
         ok: boolean;
         type?: 'lifetime' | 'annual' | 'trial' | 'none' | 'expired' | 'trial_expired';
         isLifetime?: boolean;
@@ -32,7 +32,7 @@ declare global {
         expiredMessage?: string;
         key?: string;
       }>;
-      startTrial: () => Promise<{
+      startTrial?: () => Promise<{
         ok: boolean;
         trialStartedAt?: number;
         trialExpiresAt?: number;
@@ -40,7 +40,7 @@ declare global {
         trialUsed?: boolean;
         error?: string;
       }>;
-      validateLicense: (key: string) => Promise<{
+      validateLicense?: (key: string) => Promise<{
         ok: boolean;
         test?: boolean;
         type?: 'lifetime' | 'annual';
@@ -48,18 +48,28 @@ declare global {
         expiresAt?: number | null;
         error?: string;
       }>;
-      closeApp: () => void;
-      setHeight: (height: number) => void;
-      cardBounds: (bounds: { x: number; y: number; w: number; h: number; scale?: number }) => void;
-      scaleStart: () => void;
-      scaleEnd: (scale: number) => void;
-      setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void;
-      installUpdate: () => void;
-      checkForUpdates: () => Promise<{ ok: boolean; version?: string; error?: string }>;
-      onUpdateAvailable: (cb: (version: string) => void) => void;
-      onUpdateDownloaded: (cb: () => void) => void;
-      onUpdateNotAvailable: (cb: () => void) => void;
-      onUpdateError: (cb: (err: string) => void) => void;
+      closeApp?: () => void;
+      setHeight?: (height: number) => void;
+      cardBounds?: (bounds: { x: number; y: number; w?: number; h?: number; width?: number; height?: number; scale?: number }) => void;
+      scaleStart?: () => void;
+      scaleEnd?: (scale: number) => void;
+      setIgnoreMouseEvents?: (ignore: boolean, options?: { forward: boolean }) => void;
+      saveIcon?: (dataUrl: string) => void;
+      installUpdate?: () => void;
+      checkForUpdates?: () => Promise<{ ok: boolean; version?: string; error?: string }>;
+      onUpdateAvailable?: (cb: (version: string) => void) => void;
+      onUpdateDownloaded?: (cb: () => void) => void;
+      onUpdateNotAvailable?: (cb: () => void) => void;
+      onUpdateError?: (cb: (err: string) => void) => void;
+      getAutoLaunch?: () => Promise<boolean>;
+      setAutoLaunch?: (enabled: boolean) => Promise<boolean>;
+      minimizeToTray?: () => void;
+      minimize?: () => void;
+      close?: () => void;
+      quit?: () => void;
+      setAlwaysOnTop?: (state: boolean) => void;
+      onShowCalendar?: (cb: () => void) => void;
+      showNotification?: (opts: { title: string; body: string }) => void;
     };
   }
 }
@@ -774,12 +784,29 @@ export default function App() {
     }
   });
 
+  // Query native PC startup setting from Electron on boot
+  useEffect(() => {
+    if (window.electronAPI?.getAutoLaunch) {
+      window.electronAPI.getAutoLaunch().then((enabled) => {
+        setStartOnBoot(enabled);
+        localStorage.setItem('fm_start_on_boot', String(enabled));
+      }).catch((err) => {
+        console.error('Error reading auto-launch state from Electron:', err);
+      });
+    }
+  }, []);
+
   const [showAutostartGuideModal, setShowAutostartGuideModal] = useState<boolean>(false);
 
   const handleToggleStartOnBoot = (val: boolean) => {
     setStartOnBoot(val);
     localStorage.setItem('fm_start_on_boot', String(val));
-    if (val) {
+    if (window.electronAPI?.setAutoLaunch) {
+      window.electronAPI.setAutoLaunch(val).catch((err) => {
+        console.error('Error toggling auto-launch in Electron:', err);
+      });
+    } else if (val) {
+      // In web browser preview mode, show manual startup helper guide
       setShowAutostartGuideModal(true);
     }
   };
@@ -1550,8 +1577,35 @@ start "" "${currentUrl}"
   const [licenseError, setLicenseError] = useState<boolean>(false);
   const [licenseAPIErrorText, setLicenseAPIErrorText] = useState<string>('');
   const [trialUsed, setTrialUsed] = useState<boolean>(false);
-  const [licenseType, setLicenseType] = useState<'lifetime' | 'annual' | 'trial' | 'none'>('none');
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [licenseType, setLicenseType] = useState<'lifetime' | 'annual' | 'trial' | 'none'>(() => {
+    try {
+      const savedType = localStorage.getItem('fm_license_type') as any;
+      if (savedType === 'lifetime' || savedType === 'annual' || savedType === 'trial') {
+        return savedType;
+      }
+      const savedKey = localStorage.getItem('fm_license_key');
+      if (savedKey) {
+        const exp = localStorage.getItem('fm_license_expires_at');
+        return exp ? 'annual' : 'lifetime';
+      }
+      const trialStart = localStorage.getItem('fm_trial_start');
+      if (trialStart) {
+        return 'trial';
+      }
+    } catch (e) {}
+    return 'none';
+  });
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(() => {
+    try {
+      const trialStart = localStorage.getItem('fm_trial_start');
+      if (trialStart) {
+        const startMs = parseInt(trialStart, 10);
+        const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
+        return Math.max(1, Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24)));
+      }
+    } catch (e) {}
+    return null;
+  });
 
   // Drag reorder states
   const isDraggingModeRef = useRef<boolean>(false);
@@ -2495,9 +2549,19 @@ start "" "${currentUrl}"
       }
     } else {
       // Fallback web preview test key activation
-      const isAnnual = cleaned.toLowerCase().includes('annual');
-      const type = isAnnual ? 'annual' : 'lifetime';
-      const expiresAt = isAnnual ? Date.now() + (365 * 24 * 60 * 60 * 1000) : null;
+      const lower = cleaned.toLowerCase();
+      if (lower.includes('trial-expired')) {
+        setLicenseError(true);
+        setLicenseAPIErrorText('This trial key has expired (5-day limit reached). Please purchase a license to continue.');
+        return;
+      }
+      
+      const isTrial = lower.includes('trial');
+      const isAnnual = lower.includes('annual');
+      const type: 'lifetime' | 'annual' | 'trial' = isTrial ? 'trial' : (isAnnual ? 'annual' : 'lifetime');
+      const expiresAt = isTrial
+        ? Date.now() + (5 * 24 * 60 * 60 * 1000)
+        : (isAnnual ? Date.now() + (365 * 24 * 60 * 60 * 1000) : null);
 
       localStorage.setItem('fm_license_key', cleaned);
       localStorage.setItem('fm_license_type', type);
@@ -2506,6 +2570,12 @@ start "" "${currentUrl}"
         localStorage.setItem('fm_license_expires_at', expiresAt.toString());
       } else {
         localStorage.removeItem('fm_license_expires_at');
+      }
+
+      if (isTrial) {
+        setTrialDaysLeft(5);
+        setTrialUsed(true);
+        localStorage.setItem('fm_trial_used', '1');
       }
 
       setLicenseActive(true);
@@ -3781,6 +3851,83 @@ start "" "${currentUrl}"
               onMouseDown={(e) => e.stopPropagation()}
               style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '6px 4px 16px', flex: 1, minHeight: 0 }}
             >
+              {/* License Status Header Section */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '2px 2px 10px',
+                  borderBottom: '1px solid var(--divider)',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '9.5px',
+                    color: isLight ? 'rgba(0,0,0,0.55)' : '#94a3b8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    fontWeight: 700,
+                  }}
+                >
+                  License Status
+                </span>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '3px 10px',
+                    borderRadius: '99px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    background: licenseType === 'lifetime'
+                      ? (isLight ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.16)')
+                      : licenseType === 'annual'
+                      ? (isLight ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.16)')
+                      : licenseType === 'trial' && licenseActive
+                      ? (isLight ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.16)')
+                      : (isLight ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.16)'),
+                    border: licenseType === 'lifetime'
+                      ? '1px solid rgba(16, 185, 129, 0.4)'
+                      : licenseType === 'annual'
+                      ? '1px solid rgba(59, 130, 246, 0.4)'
+                      : licenseType === 'trial' && licenseActive
+                      ? '1px solid rgba(245, 158, 11, 0.4)'
+                      : '1px solid rgba(239, 68, 68, 0.4)',
+                    color: licenseType === 'lifetime'
+                      ? '#10b981'
+                      : licenseType === 'annual'
+                      ? '#3b82f6'
+                      : licenseType === 'trial' && licenseActive
+                      ? '#f59e0b'
+                      : '#ef4444',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: 'currentColor',
+                      display: 'inline-block',
+                      boxShadow: '0 0 6px currentColor',
+                    }}
+                  />
+                  <span>
+                    {licenseType === 'lifetime'
+                      ? 'LIFETIME UNLOCKED'
+                      : licenseType === 'annual'
+                      ? 'ANNUAL UNLOCKED'
+                      : licenseType === 'trial' && licenseActive
+                      ? `${trialDaysLeft > 0 ? trialDaysLeft : 1} DAYS TRIAL`
+                      : 'TRIAL EXPIRED'}
+                  </span>
+                </div>
+              </div>
+
               <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Move Checked to Bottom</span>
                 <GooeyNav
@@ -3858,6 +4005,19 @@ start "" "${currentUrl}"
                     { label: 'Static', onClick: () => handleAnimateMinimizedTextChange(false) },
                   ]}
                   activeIndex={animateMinimizedText ? 0 : 1}
+                  particleCount={12}
+                  animationTime={450}
+                />
+              </div>
+
+              <div className="setting-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--divider)', paddingTop: '10px' }}>
+                <span className="setting-label" style={{ fontSize: '9.5px', color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 'bold', textAlign: 'left' }}>Launch on PC Startup</span>
+                <GooeyNav
+                  items={[
+                    { label: 'Enabled', onClick: () => handleToggleStartOnBoot(true) },
+                    { label: 'Disabled', onClick: () => handleToggleStartOnBoot(false) },
+                  ]}
+                  activeIndex={startOnBoot ? 0 : 1}
                   particleCount={12}
                   animationTime={450}
                 />
@@ -4258,7 +4418,7 @@ start "" "${currentUrl}"
               <div style={{ borderTop: '1px solid var(--divider)', paddingTop: '10px', marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}>
                   <span style={{ fontSize: '10px', fontWeight: '600', color: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
-                    Overdesk Everyone v1.0.3
+                    Overdesk Everyone v1.3.1
                   </span>
                   <button
                     type="button"

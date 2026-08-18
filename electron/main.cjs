@@ -296,6 +296,37 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
 
+  // Automatically check for and silently download updates in background on launch
+  setTimeout(() => {
+    try {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log('[AutoUpdater] Silent launch check:', err?.message || err);
+      });
+    } catch (e) {}
+  }, 4000);
+
+  // Periodically check for updates automatically every 2 hours
+  setInterval(() => {
+    try {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log('[AutoUpdater] Silent periodic check:', err?.message || err);
+      });
+    } catch (e) {}
+  }, 2 * 60 * 60 * 1000);
+
+  // Ensure default auto-launch behavior on startup (or restore saved preference)
+  try {
+    const config = readConfig();
+    const shouldAutoLaunch = config.autoLaunch !== undefined ? !!config.autoLaunch : true;
+    app.setLoginItemSettings({
+      openAtLogin: shouldAutoLaunch,
+      openAsHidden: false,
+      name: 'Overdesk Everyone',
+    });
+  } catch (err) {
+    console.error('Error initializing auto-launch on startup:', err);
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -313,7 +344,7 @@ app.on('window-all-closed', () => {
 
 // Helper to parse Gumroad option or variant type
 function parseGumroadPurchaseType(purchase) {
-  if (!purchase) return { isLifetime: false, expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 };
+  if (!purchase) return { isLifetime: false, isTrial: false, type: 'annual', expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 };
 
   const optName = String(purchase.option_name || '').toLowerCase();
   const variantsStr = JSON.stringify(purchase.variants || {}).toLowerCase();
@@ -325,16 +356,29 @@ function parseGumroadPurchaseType(purchase) {
   // Annual option: qvvEn2GSxn01Xog_D17QLg==
   // Trial option: cW7dAxozIPA2o1SZUWsQRw==
 
+  // 1. Strict Trial identification
+  const isTrial = fullText.includes('cw7daxozipa2o1szuwsqrw') ||
+                  fullText.includes('trial') ||
+                  fullText.includes('free trial') ||
+                  fullText.includes('5-day');
+
+  if (isTrial) {
+    const createdAtMs = purchase.created_at ? new Date(purchase.created_at).getTime() : Date.now();
+    const trialExpiresAt = createdAtMs + (5 * 24 * 60 * 60 * 1000);
+    return { isLifetime: false, isTrial: true, type: 'trial', expiresAt: trialExpiresAt };
+  }
+
+  // 2. Strict Lifetime identification
   const isLifetime = fullText.includes('guyuge2gou1zwkk') ||
                      fullText.includes('lifetime') ||
                      fullText.includes('life-time') ||
                      fullText.includes('permanent');
 
   if (isLifetime) {
-    return { isLifetime: true, expiresAt: null };
+    return { isLifetime: true, isTrial: false, type: 'lifetime', expiresAt: null };
   }
 
-  // Calculate expiration for Annual / Subscription
+  // 3. Annual / Subscription option
   let expiresAt = null;
   if (purchase.subscription_ended_at) {
     expiresAt = new Date(purchase.subscription_ended_at).getTime();
@@ -349,7 +393,7 @@ function parseGumroadPurchaseType(purchase) {
     expiresAt = Date.now() + (365 * 24 * 60 * 60 * 1000);
   }
 
-  return { isLifetime: false, expiresAt };
+  return { isLifetime: false, isTrial: false, type: 'annual', expiresAt };
 }
 
 // Check if license or trial is active
@@ -383,15 +427,35 @@ ipcMain.handle('check-license', () => {
     } catch (e) {}
   }
 
-  // 1. Check paid license status
+  // 1. Check paid or registered key status
   if (config.licenseValid && (config.licenseKey || storedLicenseKey)) {
-    const isLifetime = config.licenseType === 'lifetime' || config.licenseExpiresAt === null || config.licenseExpiresAt === undefined;
-    
-    if (isLifetime) {
-      return { ok: true, type: 'lifetime', isLifetime: true, key: config.licenseKey || storedLicenseKey, trialUsed };
+    // If the registered key was a trial license
+    if (config.licenseType === 'trial') {
+      const trialExpiresAt = config.licenseExpiresAt || (trialStartedAt ? trialStartedAt + (5 * 24 * 60 * 60 * 1000) : 0);
+      if (trialExpiresAt && Date.now() <= trialExpiresAt) {
+        const daysLeft = Math.ceil((trialExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+        return {
+          ok: true,
+          type: 'trial',
+          trialActive: true,
+          trialUsed: true,
+          trialDaysLeft: daysLeft,
+          trialExpiresAt
+        };
+      } else {
+        writeConfig({ licenseValid: false });
+        return {
+          ok: false,
+          type: 'trial_expired',
+          trialActive: false,
+          trialUsed: true,
+          expiredMessage: 'Your 5-day free trial has expired. Please purchase a license to continue.'
+        };
+      }
     }
 
-    if (typeof config.licenseExpiresAt === 'number') {
+    // If Annual subscription
+    if (config.licenseType === 'annual' || (typeof config.licenseExpiresAt === 'number' && config.licenseExpiresAt > 0)) {
       if (Date.now() <= config.licenseExpiresAt) {
         const daysLeft = Math.ceil((config.licenseExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
         return { ok: true, type: 'annual', isLifetime: false, expiresAt: config.licenseExpiresAt, daysLeft, key: config.licenseKey, trialUsed };
@@ -407,10 +471,13 @@ ipcMain.handle('check-license', () => {
       }
     }
 
-    return { ok: true, type: 'lifetime', isLifetime: true, key: config.licenseKey || storedLicenseKey, trialUsed };
+    // Genuine lifetime licenses (or previous valid license config)
+    if (config.licenseType === 'lifetime' || !config.licenseType) {
+      return { ok: true, type: 'lifetime', isLifetime: true, key: config.licenseKey || storedLicenseKey, trialUsed };
+    }
   }
 
-  // 2. Check 5-day Trial status
+  // 2. Check 5-day in-app trial status
   if (trialStartedAt) {
     const trialExpiresAt = trialStartedAt + (5 * 24 * 60 * 60 * 1000); // 5 days ms
     if (Date.now() <= trialExpiresAt) {
@@ -546,12 +613,29 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
   // Support offline/testing authorization override keys
   if (
     normalizedKey === 'TEST-LICENSE-KEY' ||
+    normalizedKey === 'TEST-LIFETIME-KEY' ||
+    normalizedKey === 'OVERDESK-LIFETIME-TEST' ||
     normalizedKey === 'OVERDESK-TEST-KEY-2026' ||
-    normalizedKey === 'TEST-1234-5678-90AB-CDEF-1234-5678' ||
-    (cleanedKey.length === 32 && cleanedKey.startsWith('TEST'))
+    normalizedKey === 'TEST-1234-5678-90AB-CDEF-1234-5678'
   ) {
     writeConfig({ licenseValid: true, licenseKey, licenseType: 'lifetime', licenseExpiresAt: null });
     return { ok: true, test: true, type: 'lifetime', isLifetime: true, expiresAt: null };
+  }
+
+  if (normalizedKey === 'TEST-ANNUAL-KEY') {
+    const expiresAt = Date.now() + (365 * 24 * 60 * 60 * 1000);
+    writeConfig({ licenseValid: true, licenseKey, licenseType: 'annual', licenseExpiresAt: expiresAt });
+    return { ok: true, test: true, type: 'annual', isLifetime: false, expiresAt };
+  }
+
+  if (normalizedKey === 'TEST-TRIAL-KEY' || normalizedKey === 'TEST-TRIAL-EXPIRED') {
+    const isExpired = normalizedKey === 'TEST-TRIAL-EXPIRED';
+    const expiresAt = isExpired ? Date.now() - 1000 : Date.now() + (5 * 24 * 60 * 60 * 1000);
+    if (isExpired) {
+      return { ok: false, error: 'This trial key has expired (5-day limit reached). Please purchase a lifetime or annual license at overdesk.store.' };
+    }
+    writeConfig({ licenseValid: true, licenseKey, licenseType: 'trial', licenseExpiresAt: expiresAt, trialStartedAt: Date.now(), trialUsed: true });
+    return { ok: true, test: true, type: 'trial', isLifetime: false, trialActive: true, trialDaysLeft: 5, expiresAt };
   }
 
   // Attempt to load Gumroad config from package.json dynamically so developers can override without editing code
@@ -687,21 +771,48 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
       }
 
       if (uses === 1 || storedMachineId === currentMachineId) {
-        const { isLifetime, expiresAt } = parseGumroadPurchaseType(data.purchase);
+        const { isLifetime, isTrial, type: purchaseType, expiresAt } = parseGumroadPurchaseType(data.purchase);
 
+        // Handle Gumroad 5-day trial licenses
+        if (isTrial) {
+          if (expiresAt && Date.now() > expiresAt) {
+            return {
+              ok: false,
+              type: 'trial_expired',
+              error: 'This 5-day trial key has expired. Please purchase a lifetime or annual license at overdesk.store.'
+            };
+          }
+
+          const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+          writeConfig({
+            licenseValid: true,
+            licenseKey,
+            licenseType: 'trial',
+            licenseExpiresAt: expiresAt,
+            trialStartedAt: expiresAt - (5 * 24 * 60 * 60 * 1000),
+            trialUsed: true
+          });
+
+          return { ok: true, type: 'trial', isLifetime: false, trialActive: true, trialDaysLeft: daysLeft, expiresAt };
+        }
+
+        // Handle Annual subscription licenses
         if (!isLifetime && expiresAt && Date.now() > expiresAt) {
           return {
             ok: false,
-            error: 'This license key has expired. Please renew your subscription or purchase a new key at overdesk.store.'
+            error: 'This annual license key has expired. Please renew your subscription or purchase a new key at overdesk.store.'
           };
         }
+
+        // Handle Genuine Lifetime or Annual licenses
+        const finalType = isLifetime ? 'lifetime' : 'annual';
 
         if (!hasFirstActivated) {
           try {
             const dataToEncrypt = JSON.stringify({
               machineId: currentMachineId,
               licenseKey: licenseKey,
-              licenseType: isLifetime ? 'lifetime' : 'annual',
+              licenseType: finalType,
               licenseExpiresAt: expiresAt
             });
             const encryptedStr = encryptData(dataToEncrypt);
@@ -714,11 +825,11 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
         writeConfig({
           licenseValid: true,
           licenseKey,
-          licenseType: isLifetime ? 'lifetime' : 'annual',
-          licenseExpiresAt: expiresAt
+          licenseType: finalType,
+          licenseExpiresAt: isLifetime ? null : expiresAt
         });
 
-        return { ok: true, type: isLifetime ? 'lifetime' : 'annual', isLifetime, expiresAt };
+        return { ok: true, type: finalType, isLifetime, expiresAt };
       }
     }
 
@@ -872,4 +983,31 @@ ipcMain.on('save-icon', (event, dataUrl) => {
 
 ipcMain.on('install-update', () => {
   autoUpdater.quitAndInstall();
+});
+
+// Auto-Launch on PC Startup IPC Handlers
+ipcMain.handle('get-auto-launch', () => {
+  try {
+    const settings = app.getLoginItemSettings();
+    return settings.openAtLogin;
+  } catch (err) {
+    console.error('Error getting auto-launch settings:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('set-auto-launch', (event, openAtLogin) => {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: !!openAtLogin,
+      openAsHidden: false,
+      name: 'Overdesk Everyone',
+    });
+    writeConfig({ autoLaunch: !!openAtLogin });
+    const settings = app.getLoginItemSettings();
+    return settings.openAtLogin;
+  } catch (err) {
+    console.error('Error setting auto-launch settings:', err);
+    return false;
+  }
 });

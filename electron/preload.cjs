@@ -24,5 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onUpdateError: (cb) => {
     ipcRenderer.on('update-error', (event, err) => cb(err));
-  }
+  },
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled)
 });
