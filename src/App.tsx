@@ -1620,6 +1620,13 @@ start "" "${currentUrl}"
   const [draggedModeIdx, setDraggedModeIdx] = useState<number | null>(null);
   const [dragOverModeIdx, setDragOverModeIdx] = useState<number | null>(null);
   const [draggedOptionIdx, setDraggedOptionIdx] = useState<number | null>(null);
+  const isDraggingOptionRef = useRef<boolean>(false);
+  const [optionDragState, setOptionDragState] = useState<{
+    fromIdx: number;
+    currentIdx: number;
+    startY: number;
+    currentY: number;
+  } | null>(null);
 
   // Modular Modes Storage
   const [modes, setModes] = useState<Record<string, ModeDetail>>(() => {
@@ -1914,6 +1921,78 @@ start "" "${currentUrl}"
     window.addEventListener('pointercancel', onPointerUp);
   };
 
+  const handleOptionPointerDown = (e: React.PointerEvent, optionIdx: number) => {
+    if (!editMode) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'BUTTON' ||
+      target.closest('input') ||
+      target.closest('button') ||
+      target.closest('.check-box') ||
+      target.closest('.del-btn') ||
+      target.closest('.reorder-item-btn') ||
+      target.closest('.option-clock-btn')
+    ) {
+      return;
+    }
+    e.stopPropagation();
+
+    const startY = e.clientY;
+    isDraggingOptionRef.current = false;
+
+    setOptionDragState({
+      fromIdx: optionIdx,
+      currentIdx: optionIdx,
+      startY,
+      currentY: startY,
+    });
+
+    const totalOptions = modes[currentMode]?.options.length || 0;
+    const itemHeight = 49; // item height + margin-bottom
+
+    const onPointerMove = (moveEv: PointerEvent) => {
+      const deltaY = moveEv.clientY - startY;
+      if (Math.abs(deltaY) > 3) {
+        isDraggingOptionRef.current = true;
+      }
+
+      const rawStep = Math.round(deltaY / itemHeight);
+      const targetIdx = Math.max(0, Math.min(totalOptions - 1, optionIdx + rawStep));
+
+      setOptionDragState({
+        fromIdx: optionIdx,
+        currentIdx: targetIdx,
+        startY,
+        currentY: moveEv.clientY,
+      });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      setOptionDragState((prev) => {
+        if (prev) {
+          if (prev.currentIdx !== prev.fromIdx) {
+            moveOption(prev.fromIdx, prev.currentIdx);
+          }
+        }
+        return null;
+      });
+
+      setTimeout(() => {
+        isDraggingOptionRef.current = false;
+      }, 100);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  };
+
   const handleCardPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (window.electronAPI) return; // Native -webkit-app-region: drag handles physical layout movement in Electron
     if (e.button !== 0) return;
@@ -2061,11 +2140,11 @@ start "" "${currentUrl}"
       });
 
       window.electronAPI.onUpdateNotAvailable(() => {
-        setUpdateStatusText('You are using the latest version (v1.0.3).');
+        setUpdateStatusText('You are using the latest version (v1.3.2).');
       });
 
       window.electronAPI.onUpdateError(() => {
-        setUpdateStatusText('App is up to date (v1.0.3).');
+        setUpdateStatusText('App is up to date (v1.3.2).');
       });
     } else {
       // Web / browser preview fallback
@@ -2591,17 +2670,17 @@ start "" "${currentUrl}"
       try {
         const res = await window.electronAPI.checkForUpdates();
         if (!res.ok) {
-          setUpdateStatusText('You are using the latest version (v1.0.3).');
+          setUpdateStatusText('You are using the latest version (v1.3.2).');
         }
       } catch (err) {
-        setUpdateStatusText('You are using the latest version (v1.0.3).');
+        setUpdateStatusText('You are using the latest version (v1.3.2).');
       } finally {
         setCheckingUpdate(false);
       }
     } else {
       setTimeout(() => {
         setCheckingUpdate(false);
-        setUpdateStatusText('You are using the latest version (v1.0.3).');
+        setUpdateStatusText('You are using the latest version (v1.3.2).');
       }, 1000);
     }
   };
@@ -4418,7 +4497,7 @@ start "" "${currentUrl}"
               <div style={{ borderTop: '1px solid var(--divider)', paddingTop: '10px', marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%' }}>
                   <span style={{ fontSize: '10px', fontWeight: '600', color: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
-                    Overdesk Everyone v1.3.1
+                    Overdesk Everyone v1.3.2
                   </span>
                   <button
                     type="button"
@@ -5369,34 +5448,42 @@ start "" "${currentUrl}"
                 const itemReminderKey = `${currentMode}_${optionIdx}`;
                 const itemReminder = taskReminders[itemReminderKey] || Object.values(taskReminders).find(r => (r as TaskReminder).modeKey === currentMode && (r as TaskReminder).taskText === itemText) as TaskReminder | undefined;
 
+                let translateY = 0;
+                let isBeingDragged = false;
+                if (optionDragState) {
+                  if (optionDragState.fromIdx === optionIdx) {
+                    isBeingDragged = true;
+                    translateY = optionDragState.currentY - optionDragState.startY;
+                  } else {
+                    const from = optionDragState.fromIdx;
+                    const current = optionDragState.currentIdx;
+                    if (optionIdx > from && optionIdx <= current) {
+                      translateY = -49;
+                    } else if (optionIdx < from && optionIdx >= current) {
+                      translateY = 49;
+                    }
+                  }
+                }
+
                 return (
                   <li
-                    className={`option ${isItemChecked ? 'selected' : ''} ${draggedOptionIdx === optionIdx ? 'dragging-option' : ''}`}
+                    className={`option ${isItemChecked ? 'selected' : ''} ${isBeingDragged || draggedOptionIdx === optionIdx ? 'dragging-option' : ''}`}
                     key={optionIdx}
-                    onClick={() => handleOptionToggle(optionIdx)}
-                    draggable={editMode}
-                    onDragStart={(e) => {
-                      if (!editMode) return;
-                      setDraggedOptionIdx(optionIdx);
-                      e.dataTransfer.setData('text/plain', String(optionIdx));
-                      e.dataTransfer.effectAllowed = 'move';
+                    onClick={() => {
+                      if (isDraggingOptionRef.current) return;
+                      handleOptionToggle(optionIdx);
                     }}
-                    onDragOver={(e) => {
-                      if (!editMode) return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'move';
+                    onPointerDown={(e) => handleOptionPointerDown(e, optionIdx)}
+                    style={{
+                      cursor: editMode ? 'grab' : 'pointer',
+                      position: 'relative',
+                      zIndex: isBeingDragged ? 50 : 6,
+                      transform: `translateY(${translateY}px) ${isBeingDragged ? 'scale(1.02)' : 'scale(1)'}`,
+                      transition: isBeingDragged ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)',
+                      boxShadow: isBeingDragged ? '0 12px 30px rgba(0, 0, 0, 0.6)' : undefined,
+                      userSelect: 'none',
+                      touchAction: 'none',
                     }}
-                    onDrop={(e) => {
-                      if (!editMode) return;
-                      e.preventDefault();
-                      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                      if (!isNaN(fromIdx) && fromIdx !== optionIdx) {
-                        moveOption(fromIdx, optionIdx);
-                      }
-                      setDraggedOptionIdx(null);
-                    }}
-                    onDragEnd={() => setDraggedOptionIdx(null)}
-                    style={{ cursor: editMode ? 'grab' : 'pointer' }}
                   >
                     {/* Drag handle icon in edit mode */}
                     {editMode && (
@@ -5410,7 +5497,6 @@ start "" "${currentUrl}"
                           cursor: 'grab',
                           marginRight: '2px',
                         }}
-                        onClick={(e) => e.stopPropagation()}
                       >
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
                           <circle cx="9" cy="6" r="1.5" />

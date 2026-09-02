@@ -247,40 +247,46 @@ function createTray() {
   });
 }
 
-// Configure autoUpdater - silent updates without intrusive popups
+// Configure autoUpdater - silent automatic updates without intrusive popups
+autoUpdater.logger = console;
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = false;
 autoUpdater.allowDowngrade = false;
 
 autoUpdater.on('update-available', (info) => {
+  console.log('[AutoUpdater] New update available:', info?.version);
   if (mainWindow) {
     mainWindow.webContents.send('update-available', info.version);
   }
 });
 
-autoUpdater.on('update-not-available', () => {
+autoUpdater.on('update-not-available', (info) => {
+  console.log('[AutoUpdater] App is up to date.');
   if (mainWindow) {
     mainWindow.webContents.send('update-not-available');
   }
 });
 
 autoUpdater.on('error', (err) => {
+  console.error('[AutoUpdater] Update error:', err ? err.message : err);
   if (mainWindow) {
     mainWindow.webContents.send('update-error', err ? err.message : 'Update check failed');
   }
 });
 
-autoUpdater.on('update-downloaded', () => {
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('[AutoUpdater] Update downloaded completely:', info?.version);
   if (mainWindow) {
     mainWindow.webContents.send('update-downloaded');
   }
-  // Install silently automatically after download completes
+  // Install silently and automatically restart after download completes
   setTimeout(() => {
     try {
-      autoUpdater.quitAndInstall(false, true);
+      console.log('[AutoUpdater] Triggering silent background quitAndInstall...');
+      autoUpdater.quitAndInstall(true, true);
     } catch (e) {
-      console.error('Error quitting and installing update silently:', e);
+      console.error('[AutoUpdater] Error quitting and installing update silently:', e);
     }
   }, 2000);
 });

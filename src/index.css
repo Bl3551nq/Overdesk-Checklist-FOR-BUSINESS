@@ -695,6 +695,8 @@ body.editing .icon-btn::after {
 }
 
 .card-body {
+  position: relative;
+  z-index: 5;
   overflow: hidden;
   max-height: 600px;
   opacity: 1;
@@ -829,6 +831,8 @@ body.editing .icon-btn::after {
 }
 
 .scroll-area {
+  position: relative;
+  z-index: 5;
   overflow-y: auto;
   overflow-x: hidden;
   padding-top: 6px;
@@ -856,7 +860,7 @@ body.editing .icon-btn::after {
   flex-direction: column;
   transition: opacity 0.18s;
   position: relative;
-  z-index: 2;
+  z-index: 6;
   padding: 2px 0;
 }
 .options.switching {
@@ -881,7 +885,7 @@ body.editing .icon-btn::after {
   border: 1px solid rgba(255, 255, 255, 0.12);
   margin-bottom: 7px;
   position: relative;
-  z-index: 3;
+  z-index: 6;
 }
 .card.light .option {
   background: rgba(255, 255, 255, 0.55);
@@ -2050,9 +2054,18 @@ body.animations-disabled *::after {
 }
 
 .option.dragging-option {
-  opacity: 0.45;
-  background: rgba(59, 130, 246, 0.18) !important;
-  border-style: dashed !important;
+  opacity: 1 !important;
+  z-index: 100 !important;
+  position: relative !important;
+  background: rgba(59, 130, 246, 0.4) !important;
+  border: 1.5px solid #3b82f6 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65) !important;
+}
+
+.card.light .option.dragging-option {
+  background: rgba(59, 130, 246, 0.3) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
 }
 
 .reorder-item-btn {

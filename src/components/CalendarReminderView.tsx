@@ -34,6 +34,11 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const MONTH_NAMES_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
 const WEEKDAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const isVideoUrl = (url?: string): boolean => {
@@ -551,6 +556,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
 
   const weeklyDays = getWeeklyDays();
   const monthName = MONTH_NAMES[selectedDateObj.getMonth()];
+  const monthNameShort = MONTH_NAMES_SHORT[selectedDateObj.getMonth()];
   const dayNumber = selectedDateObj.getDate();
 
   return (
@@ -801,33 +807,38 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 </span>
               </div>
 
-              {/* Large Typography Date Display - Month and Day together with All Events button on top right */}
+              {/* Large Typography Date Display - Abbreviated Month and Day with All Events button */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   margin: '2px 0 8px',
-                  padding: '0 4px',
+                  padding: '0 2px',
                   flexShrink: 0,
+                  gap: '8px',
+                  width: '100%',
                 }}
               >
                 <h2
                   style={{
                     margin: 0,
-                    fontSize: '32px',
+                    fontSize: '26px',
                     fontWeight: 800,
-                    letterSpacing: '-0.03em',
+                    letterSpacing: '-0.02em',
                     lineHeight: 1,
                     color: isLight ? '#0f172a' : '#ffffff',
                     textShadow: isLight ? 'none' : '0 2px 10px rgba(0,0,0,0.5)',
                     display: 'flex',
                     alignItems: 'baseline',
-                    gap: '8px',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 1,
+                    minWidth: 0,
                   }}
                 >
-                  <span>{monthName}</span>
-                  <span style={{ color: modeColor, fontSize: '34px' }}>{dayNumber}</span>
+                  <span>{monthNameShort}</span>
+                  <span style={{ color: modeColor, fontSize: '28px' }}>{dayNumber}</span>
                 </h2>
 
                 <button
@@ -835,8 +846,8 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
+                    gap: '5px',
+                    padding: '5px 10px',
                     borderRadius: '99px',
                     background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.15)',
                     color: isLight ? '#0f172a' : '#ffffff',
@@ -847,6 +858,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                     boxShadow: isLight ? 'none' : '0 2px 8px rgba(0,0,0,0.15)',
                     transition: 'all 0.2s ease',
                     whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                   title="View all scheduled pending events"
                 >
