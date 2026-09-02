@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,10 +33,34 @@ jobs:
       - name: Build Web Application (React/Vite)
         run: npm run build
 
+      - name: Extract App Version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version is $VERSION"
+
       - name: Build Windows Executables (Electron Builder)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
+
+      - name: Publish Public GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.PACKAGE_VERSION }}
+          name: Overdesk Everyone v${{ env.PACKAGE_VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist-electron/*.exe
+            dist-electron/*.yml
+            dist-electron/*.blockmap
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
@@ -43,4 +69,5 @@ jobs:
           path: |
             dist-electron/*.exe
             dist-electron/*.yml
+            dist-electron/*.blockmap
           if-no-files-found: warn
