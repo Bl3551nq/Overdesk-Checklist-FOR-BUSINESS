@@ -807,7 +807,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                 </span>
               </div>
 
-              {/* Large Typography Date Display - Abbreviated Month and Day with All Events button */}
+              {/* Typography Date Display - Abbreviated Month and Day with All Events button */}
               <div
                 style={{
                   display: 'flex',
@@ -816,14 +816,15 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                   margin: '2px 0 8px',
                   padding: '0 2px',
                   flexShrink: 0,
-                  gap: '8px',
+                  gap: '6px',
                   width: '100%',
+                  boxSizing: 'border-box',
                 }}
               >
                 <h2
                   style={{
                     margin: 0,
-                    fontSize: '26px',
+                    fontSize: '20px',
                     fontWeight: 800,
                     letterSpacing: '-0.02em',
                     lineHeight: 1,
@@ -831,28 +832,29 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                     textShadow: isLight ? 'none' : '0 2px 10px rgba(0,0,0,0.5)',
                     display: 'flex',
                     alignItems: 'baseline',
-                    gap: '6px',
+                    gap: '4px',
                     whiteSpace: 'nowrap',
                     flexShrink: 1,
                     minWidth: 0,
+                    overflow: 'hidden',
                   }}
                 >
-                  <span>{monthNameShort}</span>
-                  <span style={{ color: modeColor, fontSize: '28px' }}>{dayNumber}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{monthNameShort}</span>
+                  <span style={{ color: modeColor, fontSize: '22px', flexShrink: 0 }}>{dayNumber}</span>
                 </h2>
 
                 <button
                   onClick={() => setShowAllEvents(true)}
                   style={{
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '5px',
-                    padding: '5px 10px',
+                    gap: '4px',
+                    padding: '4px 8px',
                     borderRadius: '99px',
                     background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.15)',
                     color: isLight ? '#0f172a' : '#ffffff',
                     border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.2)',
-                    fontSize: '11px',
+                    fontSize: '10.5px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     boxShadow: isLight ? 'none' : '0 2px 8px rgba(0,0,0,0.15)',
@@ -862,7 +864,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
                   }}
                   title="View all scheduled pending events"
                 >
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
                   </svg>
                   All Events
@@ -1419,7 +1421,7 @@ export const CalendarReminderView: React.FC<CalendarReminderViewProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: isLight ? '#334155' : '#e2e8f0' }}>
-                  {isSameDay(selectedDateObj, new Date()) ? "Today's Reminders" : `${MONTH_NAMES[selectedDateObj.getMonth()]} ${selectedDateObj.getDate()} Reminders`}
+                  {isSameDay(selectedDateObj, new Date()) ? "Today's Reminders" : `${monthNameShort} ${selectedDateObj.getDate()} Reminders`}
                 </span>
                 {getRemindersForSelectedDate().length > 0 && (
                   <span

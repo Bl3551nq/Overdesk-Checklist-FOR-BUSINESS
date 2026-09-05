@@ -43,8 +43,11 @@ declare global {
       validateLicense?: (key: string) => Promise<{
         ok: boolean;
         test?: boolean;
-        type?: 'lifetime' | 'annual';
+        type?: 'lifetime' | 'annual' | 'trial' | 'trial_expired' | 'expired';
         isLifetime?: boolean;
+        trialActive?: boolean;
+        trialUsed?: boolean;
+        trialDaysLeft?: number;
         expiresAt?: number | null;
         error?: string;
       }>;
@@ -1576,7 +1579,17 @@ start "" "${currentUrl}"
   const [licenseInput, setLicenseInput] = useState<string>('');
   const [licenseError, setLicenseError] = useState<boolean>(false);
   const [licenseAPIErrorText, setLicenseAPIErrorText] = useState<string>('');
-  const [trialUsed, setTrialUsed] = useState<boolean>(false);
+  const [trialUsed, setTrialUsed] = useState<boolean>(() => {
+    try {
+      if (localStorage.getItem('fm_trial_used') === '1') return true;
+      const trialStart = localStorage.getItem('fm_trial_start');
+      if (trialStart) {
+        const startMs = parseInt(trialStart, 10);
+        if (!isNaN(startMs) && Date.now() > startMs + (5 * 24 * 60 * 60 * 1000)) return true;
+      }
+    } catch (e) {}
+    return false;
+  });
   const [licenseType, setLicenseType] = useState<'lifetime' | 'annual' | 'trial' | 'none'>(() => {
     try {
       const savedType = localStorage.getItem('fm_license_type') as any;
@@ -1597,11 +1610,15 @@ start "" "${currentUrl}"
   });
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(() => {
     try {
+      const savedType = localStorage.getItem('fm_license_type');
+      if (savedType === 'lifetime' || savedType === 'annual') return null;
       const trialStart = localStorage.getItem('fm_trial_start');
       if (trialStart) {
         const startMs = parseInt(trialStart, 10);
         const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
-        return Math.max(1, Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24)));
+        if (Date.now() <= expMs) {
+          return Math.max(1, Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24)));
+        }
       }
     } catch (e) {}
     return null;
@@ -2113,14 +2130,26 @@ start "" "${currentUrl}"
         if (res.ok) {
           setLicenseActive(true);
           localStorage.setItem('fm_license_active', '1');
-          setLicenseType(res.type || 'lifetime');
-          if (res.trialDaysLeft !== undefined) setTrialDaysLeft(res.trialDaysLeft);
-          if (res.trialUsed) setTrialUsed(true);
+          const type = res.type || 'lifetime';
+          setLicenseType(type);
+          if (type === 'lifetime' || type === 'annual') {
+            setTrialDaysLeft(null);
+            localStorage.removeItem('fm_trial_start');
+          } else if (res.trialDaysLeft !== undefined) {
+            setTrialDaysLeft(res.trialDaysLeft);
+          }
+          if (res.trialUsed) {
+            setTrialUsed(true);
+            localStorage.setItem('fm_trial_used', '1');
+          }
         } else {
           setLicenseActive(false);
           localStorage.setItem('fm_license_active', '0');
           setLicenseType('none');
-          if (res.trialUsed) setTrialUsed(true);
+          if (res.trialUsed) {
+            setTrialUsed(true);
+            localStorage.setItem('fm_trial_used', '1');
+          }
           if (res.expiredMessage) {
             setLicenseAPIErrorText(res.expiredMessage);
           }
@@ -2149,7 +2178,7 @@ start "" "${currentUrl}"
     } else {
       // Web / browser preview fallback
       const localKey = localStorage.getItem('fm_license_key');
-      const localType = localStorage.getItem('fm_license_type') as 'lifetime' | 'annual' | null;
+      const localType = localStorage.getItem('fm_license_type') as 'lifetime' | 'annual' | 'trial' | null;
       const localExp = localStorage.getItem('fm_license_expires_at');
       const localTrialStart = localStorage.getItem('fm_trial_start');
       const localTrialUsed = localStorage.getItem('fm_trial_used') === '1';
@@ -2157,24 +2186,42 @@ start "" "${currentUrl}"
       if (localTrialUsed) setTrialUsed(true);
 
       if (localKey) {
-        if (localType === 'lifetime' || !localExp) {
+        if (localType === 'lifetime' || (!localExp && localType !== 'trial')) {
           setLicenseActive(true);
           localStorage.setItem('fm_license_active', '1');
           setLicenseType('lifetime');
+          setTrialDaysLeft(null);
+          localStorage.removeItem('fm_trial_start');
         } else {
-          const expMs = parseInt(localExp, 10);
+          const expMs = parseInt(localExp || '0', 10);
           if (!isNaN(expMs) && Date.now() <= expMs) {
             setLicenseActive(true);
             localStorage.setItem('fm_license_active', '1');
-            setLicenseType('annual');
+            const resolvedType = localType === 'trial' ? 'trial' : 'annual';
+            setLicenseType(resolvedType);
+            if (resolvedType === 'trial') {
+              const daysLeft = Math.ceil((expMs - Date.now()) / (1000 * 60 * 60 * 24));
+              setTrialDaysLeft(daysLeft);
+              setTrialUsed(true);
+              localStorage.setItem('fm_trial_used', '1');
+            } else {
+              setTrialDaysLeft(null);
+              localStorage.removeItem('fm_trial_start');
+            }
           } else {
             setLicenseActive(false);
             localStorage.setItem('fm_license_active', '0');
             setLicenseType('none');
-            setLicenseAPIErrorText('Your annual license key has expired. Please enter a valid license or purchase a new one at overdesk.store.');
+            if (localType === 'trial') {
+              setTrialUsed(true);
+              localStorage.setItem('fm_trial_used', '1');
+              setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
+            } else {
+              setLicenseAPIErrorText('Your annual license key has expired. Please enter a valid license or purchase a new one at overdesk.store.');
+            }
           }
         }
-      } else if (localTrialStart) {
+      } else if (localTrialStart && !localTrialUsed) {
         const startMs = parseInt(localTrialStart, 10);
         const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
         if (Date.now() <= expMs) {
@@ -2187,6 +2234,7 @@ start "" "${currentUrl}"
         } else {
           setLicenseActive(false);
           localStorage.setItem('fm_license_active', '0');
+          localStorage.setItem('fm_trial_used', '1');
           setLicenseType('none');
           setTrialUsed(true);
           setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
@@ -2195,6 +2243,9 @@ start "" "${currentUrl}"
         setLicenseActive(false);
         localStorage.setItem('fm_license_active', '0');
         setLicenseType('none');
+        if (localTrialUsed) {
+          setLicenseAPIErrorText('Your 5-day free trial has expired. Please purchase a license to continue.');
+        }
       }
     }
   }, []);
@@ -2215,6 +2266,10 @@ start "" "${currentUrl}"
             setLicenseActive(false);
             setLicenseType('none');
             setLicenseError(true);
+            if (res.trialUsed) {
+              setTrialUsed(true);
+              localStorage.setItem('fm_trial_used', '1');
+            }
             if (res.expiredMessage) {
               setLicenseAPIErrorText(res.expiredMessage);
             } else if (licenseType === 'trial') {
@@ -2223,7 +2278,12 @@ start "" "${currentUrl}"
               setLicenseAPIErrorText('Your license key has expired. Please enter a valid license at overdesk.store.');
             }
           } else {
-            if (res.trialDaysLeft !== undefined) setTrialDaysLeft(res.trialDaysLeft);
+            if (res.type === 'lifetime' || res.type === 'annual') {
+              setTrialDaysLeft(null);
+              localStorage.removeItem('fm_trial_start');
+            } else if (res.trialDaysLeft !== undefined) {
+              setTrialDaysLeft(res.trialDaysLeft);
+            }
           }
         });
       } else {
@@ -2235,6 +2295,8 @@ start "" "${currentUrl}"
             const expMs = startMs + 5 * 24 * 60 * 60 * 1000;
             if (Date.now() > expMs) {
               setLicenseActive(false);
+              localStorage.setItem('fm_license_active', '0');
+              localStorage.setItem('fm_trial_used', '1');
               setLicenseType('none');
               setTrialUsed(true);
               setLicenseError(true);
@@ -2564,7 +2626,16 @@ start "" "${currentUrl}"
     setLicenseAPIErrorText('');
     setLicenseError(false);
 
-    if (trialUsed) {
+    const hasUsedTrial = trialUsed || localStorage.getItem('fm_trial_used') === '1' || (() => {
+      const startStr = localStorage.getItem('fm_trial_start');
+      if (!startStr) return false;
+      const startMs = parseInt(startStr, 10);
+      return !isNaN(startMs) && Date.now() > startMs + (5 * 24 * 60 * 60 * 1000);
+    })();
+
+    if (hasUsedTrial) {
+      setTrialUsed(true);
+      localStorage.setItem('fm_trial_used', '1');
       setLicenseError(true);
       setLicenseAPIErrorText('Your free trial has already been used. Please purchase a license to continue.');
       return;
@@ -2578,8 +2649,10 @@ start "" "${currentUrl}"
         setLicenseType('trial');
         setTrialDaysLeft(5);
         setTrialUsed(true);
+        localStorage.setItem('fm_trial_used', '1');
       } else {
         setTrialUsed(true);
+        localStorage.setItem('fm_trial_used', '1');
         setLicenseError(true);
         setLicenseAPIErrorText(res.error || 'Your free trial has already been used. Please purchase a license to continue.');
       }
@@ -2611,17 +2684,43 @@ start "" "${currentUrl}"
       if (resp.ok) {
         setLicenseActive(true);
         localStorage.setItem('fm_license_active', '1');
-        setLicenseType(resp.type || (resp.isLifetime ? 'lifetime' : 'annual'));
+        const finalType = resp.type || (resp.isLifetime ? 'lifetime' : 'annual');
+        setLicenseType(finalType);
+        localStorage.setItem('fm_license_key', cleaned);
+        localStorage.setItem('fm_license_type', finalType);
+        if (resp.expiresAt) {
+          localStorage.setItem('fm_license_expires_at', resp.expiresAt.toString());
+        } else {
+          localStorage.removeItem('fm_license_expires_at');
+        }
+
+        if (finalType === 'lifetime' || finalType === 'annual') {
+          // Clear trial so the app is unlocked as full license
+          localStorage.removeItem('fm_trial_start');
+          setTrialDaysLeft(null);
+          setTrialUsed(true);
+          localStorage.setItem('fm_trial_used', '1');
+        } else if (resp.trialDaysLeft !== undefined) {
+          setTrialDaysLeft(resp.trialDaysLeft);
+          setTrialUsed(true);
+          localStorage.setItem('fm_trial_used', '1');
+        }
+
         setLicenseAPIErrorText('');
+        setLicenseError(false);
       } else {
         setLicenseError(true);
+        if (resp.trialUsed || resp.type === 'trial_expired') {
+          setTrialUsed(true);
+          localStorage.setItem('fm_trial_used', '1');
+        }
         const err = resp.error || '';
         if (err.includes('refunded')) {
           setLicenseAPIErrorText('This license has been refunded and is no longer valid.');
         } else if (err.includes('already activated') || err.includes('another device')) {
           setLicenseAPIErrorText('This license key is already activated on another device. Contact support to transfer.');
         } else if (err.includes('expired')) {
-          setLicenseAPIErrorText('This license key has expired. Please renew your subscription or purchase a new key at overdesk.store.');
+          setLicenseAPIErrorText(err);
         } else {
           setLicenseAPIErrorText(err || 'Invalid license key. Purchase a valid key at overdesk.store');
         }
@@ -2629,18 +2728,32 @@ start "" "${currentUrl}"
     } else {
       // Fallback web preview test key activation
       const lower = cleaned.toLowerCase();
-      if (lower.includes('trial-expired')) {
-        setLicenseError(true);
-        setLicenseAPIErrorText('This trial key has expired (5-day limit reached). Please purchase a license to continue.');
-        return;
+
+      const hasUsedTrial = trialUsed || localStorage.getItem('fm_trial_used') === '1' || (() => {
+        const startStr = localStorage.getItem('fm_trial_start');
+        if (!startStr) return false;
+        const startMs = parseInt(startStr, 10);
+        return !isNaN(startMs) && Date.now() > startMs + (5 * 24 * 60 * 60 * 1000);
+      })();
+
+      const isTrialKey = lower.includes('trial');
+      const isAnnualKey = lower.includes('annual');
+      const isLifetimeKey = lower.includes('lifetime') || (!isTrialKey && !isAnnualKey);
+
+      if (isTrialKey) {
+        if (hasUsedTrial || lower.includes('trial-expired')) {
+          setLicenseError(true);
+          setTrialUsed(true);
+          localStorage.setItem('fm_trial_used', '1');
+          setLicenseAPIErrorText('Your 5-day free trial has already expired on this device. Please purchase a lifetime or annual license at overdesk.store.');
+          return;
+        }
       }
-      
-      const isTrial = lower.includes('trial');
-      const isAnnual = lower.includes('annual');
-      const type: 'lifetime' | 'annual' | 'trial' = isTrial ? 'trial' : (isAnnual ? 'annual' : 'lifetime');
-      const expiresAt = isTrial
+
+      const type: 'lifetime' | 'annual' | 'trial' = isTrialKey ? 'trial' : (isAnnualKey ? 'annual' : 'lifetime');
+      const expiresAt = isTrialKey
         ? Date.now() + (5 * 24 * 60 * 60 * 1000)
-        : (isAnnual ? Date.now() + (365 * 24 * 60 * 60 * 1000) : null);
+        : (isAnnualKey ? Date.now() + (365 * 24 * 60 * 60 * 1000) : null);
 
       localStorage.setItem('fm_license_key', cleaned);
       localStorage.setItem('fm_license_type', type);
@@ -2651,8 +2764,15 @@ start "" "${currentUrl}"
         localStorage.removeItem('fm_license_expires_at');
       }
 
-      if (isTrial) {
+      if (isTrialKey) {
         setTrialDaysLeft(5);
+        setTrialUsed(true);
+        localStorage.setItem('fm_trial_used', '1');
+        localStorage.setItem('fm_trial_start', Date.now().toString());
+      } else {
+        // Genuine Lifetime or Annual key: clear trial completely
+        localStorage.removeItem('fm_trial_start');
+        setTrialDaysLeft(null);
         setTrialUsed(true);
         localStorage.setItem('fm_trial_used', '1');
       }
@@ -2660,6 +2780,7 @@ start "" "${currentUrl}"
       setLicenseActive(true);
       setLicenseType(type);
       setLicenseAPIErrorText('');
+      setLicenseError(false);
     }
   };
 

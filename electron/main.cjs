@@ -37,11 +37,21 @@ function readConfig() {
 
 // Helper to write config
 let writeTimeout = null;
-function writeConfig(data) {
+function writeConfig(data, immediate = false) {
   try {
     const current = readConfig();
     configCache = { ...current, ...data };
     
+    if (immediate) {
+      if (writeTimeout) clearTimeout(writeTimeout);
+      try {
+        fs.writeFileSync(configPath, JSON.stringify(configCache, null, 2), 'utf8');
+      } catch (writeErr) {
+        console.error('Error synchronously writing config:', writeErr);
+      }
+      return;
+    }
+
     if (writeTimeout) clearTimeout(writeTimeout);
     writeTimeout = setTimeout(() => {
       try {
@@ -52,6 +62,160 @@ function writeConfig(data) {
     }, 500); // 500ms debounce
   } catch (err) {
     console.error('Error in writeConfig queue:', err);
+  }
+}
+
+// ── Hardware Fingerprint & Persistent Encrypted Device Vault ──
+function getMachineId() {
+  try {
+    const cpuModel = (os.cpus() && os.cpus().length > 0) ? os.cpus()[0].model : 'unknown-cpu';
+    const raw = [
+      String(os.hostname() || 'unknown-host'),
+      String(os.platform() || 'unknown-platform'),
+      String(os.arch() || 'unknown-arch'),
+      String(cpuModel),
+      String(os.totalmem() || '0'),
+    ].join('|');
+    return crypto.createHash('sha256').update(raw).digest('hex');
+  } catch (e) {
+    return crypto.createHash('sha256').update('fallback-machine-id').digest('hex');
+  }
+}
+
+const ENCRYPTION_KEY = crypto.scryptSync('overdesk-license-key-salt', 'salt', 32);
+const IV = Buffer.alloc(16, 0);
+
+function encryptData(dataStr) {
+  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, IV);
+  let encrypted = cipher.update(dataStr, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return encrypted;
+}
+
+function decryptData(encryptedHex) {
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, IV);
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getDeviceVaultPaths() {
+  const paths = [
+    path.join(app.getPath('userData'), 'license-device.enc')
+  ];
+
+  try {
+    const homeDir = os.homedir();
+    if (homeDir) {
+      paths.push(path.join(homeDir, '.overdesk_device_vault.enc'));
+    }
+  } catch (e) {}
+
+  try {
+    if (process.env.LOCALAPPDATA) {
+      const localAppDir = path.join(process.env.LOCALAPPDATA, 'Overdesk');
+      paths.push(path.join(localAppDir, 'device-vault.enc'));
+    }
+  } catch (e) {}
+
+  return paths;
+}
+
+function getDeviceTrialRecord() {
+  const config = readConfig();
+  const currentMachineId = getMachineId();
+  let trialUsed = config.trialUsed === true || config.trialExpired === true;
+  let trialStartedAt = config.trialStartedAt || null;
+  let trialExpired = config.trialExpired === true;
+  let storedKey = config.licenseKey || null;
+  let machineMatches = false;
+
+  const vaultPaths = getDeviceVaultPaths();
+  for (const vPath of vaultPaths) {
+    if (fs.existsSync(vPath)) {
+      try {
+        const encryptedData = fs.readFileSync(vPath, 'utf8').trim();
+        const decrypted = decryptData(encryptedData);
+        if (decrypted) {
+          const parsed = JSON.parse(decrypted);
+          if (parsed.trialUsed) trialUsed = true;
+          if (parsed.trialExpired) trialExpired = true;
+          if (parsed.trialStartedAt) {
+            trialStartedAt = trialStartedAt ? Math.min(trialStartedAt, parsed.trialStartedAt) : parsed.trialStartedAt;
+          }
+          if (parsed.licenseKey && !storedKey) {
+            storedKey = parsed.licenseKey;
+          }
+          if (parsed.machineId === currentMachineId) {
+            machineMatches = true;
+          }
+        }
+      } catch (err) {}
+    }
+  }
+
+  // Check if 5-day trial period (5 * 24 * 60 * 60 * 1000 = 432,000,000 ms) has elapsed
+  if (trialStartedAt && (Date.now() > trialStartedAt + (5 * 24 * 60 * 60 * 1000))) {
+    trialUsed = true;
+    trialExpired = true;
+  }
+
+  // If trial is flagged as used or expired in any storage, lock and synchronize all vaults immediately
+  if (trialUsed || trialExpired) {
+    persistDeviceTrialRecord({
+      machineId: currentMachineId,
+      trialStartedAt: trialStartedAt || (Date.now() - (6 * 24 * 60 * 60 * 1000)),
+      trialUsed: true,
+      trialExpired: true
+    });
+  }
+
+  return {
+    trialUsed,
+    trialExpired,
+    trialStartedAt,
+    storedKey,
+    machineMatches,
+    isDeviceTrialExpiredOrUsed: trialUsed || trialExpired
+  };
+}
+
+function persistDeviceTrialRecord(record = {}) {
+  try {
+    const currentMachineId = getMachineId();
+    const dataToSave = {
+      machineId: currentMachineId,
+      trialUsed: true,
+      trialExpired: record.trialExpired !== undefined ? record.trialExpired : true,
+      trialStartedAt: record.trialStartedAt || Date.now(),
+      updatedAt: Date.now(),
+      ...record
+    };
+
+    const encryptedStr = encryptData(JSON.stringify(dataToSave));
+    const vaultPaths = getDeviceVaultPaths();
+    for (const vPath of vaultPaths) {
+      try {
+        const dir = path.dirname(vPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(vPath, encryptedStr, 'utf8');
+      } catch (e) {}
+    }
+
+    // Synchronously write to app-config.json
+    writeConfig({
+      trialUsed: true,
+      trialExpired: dataToSave.trialExpired,
+      trialStartedAt: dataToSave.trialStartedAt
+    }, true);
+  } catch (err) {
+    console.error('Failed to persist device trial record:', err);
   }
 }
 
@@ -254,41 +418,52 @@ autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = false;
 autoUpdater.allowDowngrade = false;
 
+app.on('before-quit', () => {
+  isQuitting = true;
+});
+
 autoUpdater.on('update-available', (info) => {
   console.log('[AutoUpdater] New update available:', info?.version);
-  if (mainWindow) {
-    mainWindow.webContents.send('update-available', info.version);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-available', info?.version);
   }
 });
 
 autoUpdater.on('update-not-available', (info) => {
   console.log('[AutoUpdater] App is up to date.');
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('update-not-available');
   }
 });
 
 autoUpdater.on('error', (err) => {
   console.error('[AutoUpdater] Update error:', err ? err.message : err);
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('update-error', err ? err.message : 'Update check failed');
   }
 });
 
 autoUpdater.on('update-downloaded', (info) => {
   console.log('[AutoUpdater] Update downloaded completely:', info?.version);
-  if (mainWindow) {
-    mainWindow.webContents.send('update-downloaded');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-downloaded', info?.version);
   }
   // Install silently and automatically restart after download completes
   setTimeout(() => {
     try {
       console.log('[AutoUpdater] Triggering silent background quitAndInstall...');
+      isQuitting = true;
       autoUpdater.quitAndInstall(true, true);
     } catch (e) {
       console.error('[AutoUpdater] Error quitting and installing update silently:', e);
+      try {
+        isQuitting = true;
+        autoUpdater.quitAndInstall(false, true);
+      } catch (e2) {
+        console.error('[AutoUpdater] Secondary quitAndInstall attempt error:', e2);
+      }
     }
-  }, 2000);
+  }, 1500);
 });
 
 ipcMain.handle('check-for-updates', async () => {
@@ -307,18 +482,22 @@ app.whenReady().then(() => {
   // Automatically check for and silently download updates in background on launch
   setTimeout(() => {
     try {
-      autoUpdater.checkForUpdates().catch((err) => {
-        console.log('[AutoUpdater] Silent launch check:', err?.message || err);
-      });
+      if (app.isPackaged) {
+        autoUpdater.checkForUpdates().catch((err) => {
+          console.log('[AutoUpdater] Silent launch check:', err?.message || err);
+        });
+      }
     } catch (e) {}
   }, 4000);
 
   // Periodically check for updates automatically every 2 hours
   setInterval(() => {
     try {
-      autoUpdater.checkForUpdates().catch((err) => {
-        console.log('[AutoUpdater] Silent periodic check:', err?.message || err);
-      });
+      if (app.isPackaged) {
+        autoUpdater.checkForUpdates().catch((err) => {
+          console.log('[AutoUpdater] Silent periodic check:', err?.message || err);
+        });
+      }
     } catch (e) {}
   }, 2 * 60 * 60 * 1000);
 
@@ -352,23 +531,54 @@ app.on('window-all-closed', () => {
 
 // Helper to parse Gumroad option or variant type
 function parseGumroadPurchaseType(purchase) {
-  if (!purchase) return { isLifetime: false, isTrial: false, type: 'annual', expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 };
+  if (!purchase) return { isLifetime: false, isTrial: true, type: 'trial', expiresAt: Date.now() };
 
   const optName = String(purchase.option_name || '').toLowerCase();
   const variantsStr = JSON.stringify(purchase.variants || {}).toLowerCase();
-  const variantAttrStr = JSON.stringify(purchase.variant_attributes || {}).toLowerCase();
-  const fullText = `${optName} ${variantsStr} ${variantAttrStr}`;
+  const selectedText = `${optName} ${variantsStr}`;
 
-  // Option identifiers from Gumroad URLs:
-  // Lifetime option: guYugE2gou1zWkk_pMNJKQ==
-  // Annual option: qvvEn2GSxn01Xog_D17QLg==
-  // Trial option: cW7dAxozIPA2o1SZUWsQRw==
+  // Check if this purchase was free / $0
+  const isFreePrice = purchase.price === undefined || purchase.price === 0 || purchase.price === '0' || purchase.paid === false;
 
-  // 1. Strict Trial identification
-  const isTrial = fullText.includes('cw7daxozipa2o1szuwsqrw') ||
-                  fullText.includes('trial') ||
-                  fullText.includes('free trial') ||
-                  fullText.includes('5-day');
+  // 1. Strict Lifetime identification (priority: paid or lifetime option)
+  const isLifetime = selectedText.includes('guyuge2gou1zwkk') ||
+                     selectedText.includes('lifetime') ||
+                     selectedText.includes('life-time') ||
+                     selectedText.includes('permanent');
+
+  if (isLifetime && !isFreePrice) {
+    return { isLifetime: true, isTrial: false, type: 'lifetime', expiresAt: null };
+  }
+
+  // 2. Annual / Subscription option
+  const isAnnual = selectedText.includes('qvven2gsxn01xog') ||
+                   selectedText.includes('annual') ||
+                   selectedText.includes('subscription') ||
+                   selectedText.includes('yearly') ||
+                   purchase.is_recurring_billing === true;
+
+  if (isAnnual && !isFreePrice) {
+    let expiresAt = null;
+    if (purchase.subscription_ended_at) {
+      expiresAt = new Date(purchase.subscription_ended_at).getTime();
+    } else if (purchase.created_at) {
+      const createdAtMs = new Date(purchase.created_at).getTime();
+      if (!isNaN(createdAtMs)) {
+        expiresAt = createdAtMs + (365 * 24 * 60 * 60 * 1000); // 1 year
+      }
+    }
+    if (!expiresAt || isNaN(expiresAt)) {
+      expiresAt = Date.now() + (365 * 24 * 60 * 60 * 1000);
+    }
+    return { isLifetime: false, isTrial: false, type: 'annual', expiresAt };
+  }
+
+  // 3. ANY free / $0 purchase, or option containing trial keywords, is ALWAYS treated as a 5-day trial
+  const isTrial = isFreePrice ||
+                  selectedText.includes('cw7daxozipa2o1szuwsqrw') ||
+                  selectedText.includes('trial') ||
+                  selectedText.includes('free trial') ||
+                  selectedText.includes('5-day');
 
   if (isTrial) {
     const createdAtMs = purchase.created_at ? new Date(purchase.created_at).getTime() : Date.now();
@@ -376,71 +586,32 @@ function parseGumroadPurchaseType(purchase) {
     return { isLifetime: false, isTrial: true, type: 'trial', expiresAt: trialExpiresAt };
   }
 
-  // 2. Strict Lifetime identification
-  const isLifetime = fullText.includes('guyuge2gou1zwkk') ||
-                     fullText.includes('lifetime') ||
-                     fullText.includes('life-time') ||
-                     fullText.includes('permanent');
-
-  if (isLifetime) {
+  // 4. Fallback for paid purchases (> 0)
+  if (purchase.price && Number(purchase.price) > 0) {
+    if (purchase.is_recurring_billing) {
+      return { isLifetime: false, isTrial: false, type: 'annual', expiresAt: Date.now() + (365 * 24 * 60 * 60 * 1000) };
+    }
     return { isLifetime: true, isTrial: false, type: 'lifetime', expiresAt: null };
   }
 
-  // 3. Annual / Subscription option
-  let expiresAt = null;
-  if (purchase.subscription_ended_at) {
-    expiresAt = new Date(purchase.subscription_ended_at).getTime();
-  } else if (purchase.created_at) {
-    const createdAtMs = new Date(purchase.created_at).getTime();
-    if (!isNaN(createdAtMs)) {
-      expiresAt = createdAtMs + (365 * 24 * 60 * 60 * 1000); // 1 year
-    }
-  }
-
-  if (!expiresAt || isNaN(expiresAt)) {
-    expiresAt = Date.now() + (365 * 24 * 60 * 60 * 1000);
-  }
-
-  return { isLifetime: false, isTrial: false, type: 'annual', expiresAt };
+  return { isLifetime: false, isTrial: true, type: 'trial', expiresAt: Date.now() };
 }
 
 // Check if license or trial is active
 ipcMain.handle('check-license', () => {
   const config = readConfig();
-  const currentMachineId = getMachineId();
-  const licenseDevicePath = path.join(app.getPath('userData'), 'license-device.enc');
+  const trialRecord = getDeviceTrialRecord();
 
-  let trialStartedAt = config.trialStartedAt || null;
-  let trialUsed = config.trialUsed || false;
-  let storedLicenseKey = config.licenseKey || null;
-
-  // Verify encrypted device file for machine persistent trial/license records
-  if (fs.existsSync(licenseDevicePath)) {
-    try {
-      const encryptedData = fs.readFileSync(licenseDevicePath, 'utf8').trim();
-      const decrypted = decryptData(encryptedData);
-      if (decrypted) {
-        const parsed = JSON.parse(decrypted);
-        if (parsed.trialStartedAt) {
-          trialStartedAt = parsed.trialStartedAt;
-          trialUsed = true;
-        }
-        if (parsed.trialUsed) {
-          trialUsed = true;
-        }
-        if (parsed.licenseKey && !storedLicenseKey) {
-          storedLicenseKey = parsed.licenseKey;
-        }
-      }
-    } catch (e) {}
-  }
+  let trialStartedAt = config.trialStartedAt || trialRecord.trialStartedAt || null;
+  let trialUsed = trialRecord.trialUsed || config.trialUsed || false;
+  let storedLicenseKey = config.licenseKey || trialRecord.storedKey || null;
 
   // 1. Check paid or registered key status
   if (config.licenseValid && (config.licenseKey || storedLicenseKey)) {
     // If the registered key was a trial license
     if (config.licenseType === 'trial') {
       const trialExpiresAt = config.licenseExpiresAt || (trialStartedAt ? trialStartedAt + (5 * 24 * 60 * 60 * 1000) : 0);
-      if (trialExpiresAt && Date.now() <= trialExpiresAt) {
+      if (trialExpiresAt && Date.now() <= trialExpiresAt && !trialRecord.trialExpired) {
         const daysLeft = Math.ceil((trialExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
         return {
           ok: true,
@@ -451,7 +622,9 @@ ipcMain.handle('check-license', () => {
           trialExpiresAt
         };
       } else {
-        writeConfig({ licenseValid: false });
+        // Trial expired - permanently record in all vaults and config
+        persistDeviceTrialRecord({ trialExpired: true, trialUsed: true, trialStartedAt });
+        writeConfig({ licenseValid: false, trialUsed: true, trialExpired: true }, true);
         return {
           ok: false,
           type: 'trial_expired',
@@ -466,10 +639,10 @@ ipcMain.handle('check-license', () => {
     if (config.licenseType === 'annual' || (typeof config.licenseExpiresAt === 'number' && config.licenseExpiresAt > 0)) {
       if (Date.now() <= config.licenseExpiresAt) {
         const daysLeft = Math.ceil((config.licenseExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-        return { ok: true, type: 'annual', isLifetime: false, expiresAt: config.licenseExpiresAt, daysLeft, key: config.licenseKey, trialUsed };
+        return { ok: true, type: 'annual', isLifetime: false, expiresAt: config.licenseExpiresAt, daysLeft, key: config.licenseKey, trialUsed: true };
       } else {
         // Annual license key expired
-        writeConfig({ licenseValid: false });
+        writeConfig({ licenseValid: false }, true);
         return {
           ok: false,
           type: 'expired',
@@ -479,16 +652,16 @@ ipcMain.handle('check-license', () => {
       }
     }
 
-    // Genuine lifetime licenses (or previous valid license config)
+    // Genuine lifetime licenses
     if (config.licenseType === 'lifetime' || !config.licenseType) {
-      return { ok: true, type: 'lifetime', isLifetime: true, key: config.licenseKey || storedLicenseKey, trialUsed };
+      return { ok: true, type: 'lifetime', isLifetime: true, key: config.licenseKey || storedLicenseKey, trialUsed: true };
     }
   }
 
   // 2. Check 5-day in-app trial status
   if (trialStartedAt) {
     const trialExpiresAt = trialStartedAt + (5 * 24 * 60 * 60 * 1000); // 5 days ms
-    if (Date.now() <= trialExpiresAt) {
+    if (Date.now() <= trialExpiresAt && !trialRecord.trialExpired) {
       const daysLeft = Math.ceil((trialExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
       return {
         ok: true,
@@ -499,7 +672,9 @@ ipcMain.handle('check-license', () => {
         trialExpiresAt
       };
     } else {
-      // Trial expired
+      // Trial expired - permanently record in all vaults and config
+      persistDeviceTrialRecord({ trialExpired: true, trialUsed: true, trialStartedAt });
+      writeConfig({ licenseValid: false, trialUsed: true, trialExpired: true }, true);
       return {
         ok: false,
         type: 'trial_expired',
@@ -515,57 +690,40 @@ ipcMain.handle('check-license', () => {
     ok: false,
     type: 'none',
     trialActive: false,
-    trialUsed: trialUsed
+    trialUsed: trialRecord.isDeviceTrialExpiredOrUsed
   };
 });
 
 // Start 5-day Trial IPC
 ipcMain.handle('start-trial', () => {
-  const config = readConfig();
-  const currentMachineId = getMachineId();
-  const licenseDevicePath = path.join(app.getPath('userData'), 'license-device.enc');
+  const trialRecord = getDeviceTrialRecord();
 
-  let trialStartedAt = config.trialStartedAt || null;
-  let trialUsed = config.trialUsed || false;
-
-  if (fs.existsSync(licenseDevicePath)) {
-    try {
-      const encryptedData = fs.readFileSync(licenseDevicePath, 'utf8').trim();
-      const decrypted = decryptData(encryptedData);
-      if (decrypted) {
-        const parsed = JSON.parse(decrypted);
-        if (parsed.trialStartedAt || parsed.trialUsed) {
-          trialStartedAt = parsed.trialStartedAt || trialStartedAt;
-          trialUsed = true;
-        }
-      }
-    } catch (e) {}
-  }
-
-  if (trialUsed || trialStartedAt) {
+  if (trialRecord.isDeviceTrialExpiredOrUsed) {
+    persistDeviceTrialRecord({ trialUsed: true, trialExpired: true });
     return {
       ok: false,
       trialUsed: true,
-      error: 'Your free trial has already been used. Please purchase a license to continue.'
+      error: 'Your free trial has already been used on this device. Please purchase a license to continue.'
     };
   }
 
   const now = Date.now();
   const expiresAt = now + (5 * 24 * 60 * 60 * 1000);
 
-  writeConfig({ trialStartedAt: now, trialUsed: true });
+  persistDeviceTrialRecord({
+    trialStartedAt: now,
+    trialUsed: true,
+    trialExpired: false
+  });
 
-  try {
-    const dataToEncrypt = JSON.stringify({
-      machineId: currentMachineId,
-      trialStartedAt: now,
-      trialUsed: true
-    });
-    const encryptedStr = encryptData(dataToEncrypt);
-    fs.writeFileSync(licenseDevicePath, encryptedStr, 'utf8');
-  } catch (err) {
-    console.error('Failed to save device trial record:', err);
-  }
+  writeConfig({
+    licenseValid: true,
+    licenseType: 'trial',
+    licenseExpiresAt: expiresAt,
+    trialStartedAt: now,
+    trialUsed: true,
+    trialExpired: false
+  }, true);
 
   return {
     ok: true,
@@ -575,48 +733,38 @@ ipcMain.handle('start-trial', () => {
   };
 });
 
-function getMachineId() {
-  try {
-    const cpuModel = (os.cpus() && os.cpus().length > 0) ? os.cpus()[0].model : 'unknown-cpu';
-    const raw = [
-      String(os.hostname() || 'unknown-host'),
-      String(os.platform() || 'unknown-platform'),
-      String(os.arch() || 'unknown-arch'),
-      String(cpuModel),
-      String(os.totalmem() || '0'),
-    ].join('|');
-    return crypto.createHash('sha256').update(raw).digest('hex');
-  } catch (e) {
-    return crypto.createHash('sha256').update('fallback-machine-id').digest('hex');
-  }
-}
-
-const ENCRYPTION_KEY = crypto.scryptSync('overdesk-license-key-salt', 'salt', 32);
-const IV = Buffer.alloc(16, 0);
-
-function encryptData(dataStr) {
-  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, IV);
-  let encrypted = cipher.update(dataStr, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return encrypted;
-}
-
-function decryptData(encryptedHex) {
-  try {
-    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, IV);
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (e) {
-    return null;
-  }
-}
-
 // Gumroad License verify
 ipcMain.handle('validate-license', async (event, rawKey) => {
   const licenseKey = rawKey.trim();
   const normalizedKey = licenseKey.toUpperCase();
   const cleanedKey = normalizedKey.replace(/[^A-Z0-9]/g, '');
+
+  const currentMachineId = getMachineId();
+  const trialRecord = getDeviceTrialRecord();
+  const isDeviceTrialExpiredOrUsed = trialRecord.isDeviceTrialExpiredOrUsed;
+
+  let hasFirstActivated = false;
+  let storedMachineId = '';
+
+  const vaultPaths = getDeviceVaultPaths();
+  for (const vPath of vaultPaths) {
+    if (fs.existsSync(vPath)) {
+      try {
+        const encryptedData = fs.readFileSync(vPath, 'utf8').trim();
+        const decrypted = decryptData(encryptedData);
+        if (decrypted) {
+          const parsed = JSON.parse(decrypted);
+          if (parsed.machineId && parsed.licenseKey) {
+            const storedKeyMatch = parsed.licenseKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (storedKeyMatch === cleanedKey) {
+              storedMachineId = parsed.machineId;
+              hasFirstActivated = true;
+            }
+          }
+        }
+      } catch (err) {}
+    }
+  }
 
   // Support offline/testing authorization override keys
   if (
@@ -626,23 +774,32 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
     normalizedKey === 'OVERDESK-TEST-KEY-2026' ||
     normalizedKey === 'TEST-1234-5678-90AB-CDEF-1234-5678'
   ) {
-    writeConfig({ licenseValid: true, licenseKey, licenseType: 'lifetime', licenseExpiresAt: null });
+    persistDeviceTrialRecord({ trialUsed: true });
+    writeConfig({ licenseValid: true, licenseKey, licenseType: 'lifetime', licenseExpiresAt: null, trialActive: false, trialUsed: true }, true);
     return { ok: true, test: true, type: 'lifetime', isLifetime: true, expiresAt: null };
   }
 
   if (normalizedKey === 'TEST-ANNUAL-KEY') {
     const expiresAt = Date.now() + (365 * 24 * 60 * 60 * 1000);
-    writeConfig({ licenseValid: true, licenseKey, licenseType: 'annual', licenseExpiresAt: expiresAt });
+    persistDeviceTrialRecord({ trialUsed: true });
+    writeConfig({ licenseValid: true, licenseKey, licenseType: 'annual', licenseExpiresAt: expiresAt, trialActive: false, trialUsed: true }, true);
     return { ok: true, test: true, type: 'annual', isLifetime: false, expiresAt };
   }
 
-  if (normalizedKey === 'TEST-TRIAL-KEY' || normalizedKey === 'TEST-TRIAL-EXPIRED') {
-    const isExpired = normalizedKey === 'TEST-TRIAL-EXPIRED';
-    const expiresAt = isExpired ? Date.now() - 1000 : Date.now() + (5 * 24 * 60 * 60 * 1000);
+  // Any trial test key
+  if (normalizedKey === 'TEST-TRIAL-KEY' || normalizedKey === 'TEST-TRIAL-EXPIRED' || normalizedKey.includes('TRIAL')) {
+    const isExpired = normalizedKey === 'TEST-TRIAL-EXPIRED' || isDeviceTrialExpiredOrUsed;
     if (isExpired) {
-      return { ok: false, error: 'This trial key has expired (5-day limit reached). Please purchase a lifetime or annual license at overdesk.store.' };
+      persistDeviceTrialRecord({ trialExpired: true, trialUsed: true });
+      return {
+        ok: false,
+        type: 'trial_expired',
+        error: 'Your 5-day free trial has already expired on this device. Please purchase a lifetime or annual license at overdesk.store.'
+      };
     }
-    writeConfig({ licenseValid: true, licenseKey, licenseType: 'trial', licenseExpiresAt: expiresAt, trialStartedAt: Date.now(), trialUsed: true });
+    const expiresAt = Date.now() + (5 * 24 * 60 * 60 * 1000);
+    persistDeviceTrialRecord({ trialStartedAt: Date.now(), trialUsed: true, trialExpired: false, licenseKey });
+    writeConfig({ licenseValid: true, licenseKey, licenseType: 'trial', licenseExpiresAt: expiresAt, trialStartedAt: Date.now(), trialUsed: true }, true);
     return { ok: true, test: true, type: 'trial', isLifetime: false, trialActive: true, trialDaysLeft: 5, expiresAt };
   }
 
@@ -670,30 +827,6 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
     }
   } catch (pkgErr) {
     console.error('Error reading package.json for Gumroad configuration, using defaults:', pkgErr);
-  }
-
-  const currentMachineId = getMachineId();
-  const licenseDevicePath = path.join(app.getPath('userData'), 'license-device.enc');
-  let hasFirstActivated = false;
-  let storedMachineId = '';
-
-  if (fs.existsSync(licenseDevicePath)) {
-    try {
-      const encryptedData = fs.readFileSync(licenseDevicePath, 'utf8').trim();
-      const decrypted = decryptData(encryptedData);
-      if (decrypted) {
-        const parsed = JSON.parse(decrypted);
-        if (parsed.machineId && parsed.licenseKey) {
-          const storedKeyMatch = parsed.licenseKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-          if (storedKeyMatch === cleanedKey) {
-            storedMachineId = parsed.machineId;
-            hasFirstActivated = true;
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error reading/decrypting machine activation:', err);
-    }
   }
 
   // Always call Gumroad with increment_uses_count: false after the first activation so the count stays at 1 and is only used as a flag
@@ -778,12 +911,23 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
         };
       }
 
-      if (uses === 1 || storedMachineId === currentMachineId) {
+      if (uses === 1 || storedMachineId === currentMachineId || uses === 0) {
         const { isLifetime, isTrial, type: purchaseType, expiresAt } = parseGumroadPurchaseType(data.purchase);
 
         // Handle Gumroad 5-day trial licenses
         if (isTrial) {
+          // CRITICAL: Prevent trial reuse on any machine that already used or expired a trial
+          if (isDeviceTrialExpiredOrUsed) {
+            persistDeviceTrialRecord({ trialExpired: true, trialUsed: true });
+            return {
+              ok: false,
+              type: 'trial_expired',
+              error: 'Your 5-day free trial has already expired on this device. Please purchase a lifetime or annual license at overdesk.store.'
+            };
+          }
+
           if (expiresAt && Date.now() > expiresAt) {
+            persistDeviceTrialRecord({ trialExpired: true, trialUsed: true });
             return {
               ok: false,
               type: 'trial_expired',
@@ -792,6 +936,16 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
           }
 
           const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+
+          // Save trial activation persistently across all device vaults and config immediately
+          persistDeviceTrialRecord({
+            machineId: currentMachineId,
+            trialStartedAt: expiresAt - (5 * 24 * 60 * 60 * 1000),
+            trialUsed: true,
+            trialExpired: false,
+            licenseKey
+          });
+
           writeConfig({
             licenseValid: true,
             licenseKey,
@@ -799,7 +953,7 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
             licenseExpiresAt: expiresAt,
             trialStartedAt: expiresAt - (5 * 24 * 60 * 60 * 1000),
             trialUsed: true
-          });
+          }, true);
 
           return { ok: true, type: 'trial', isLifetime: false, trialActive: true, trialDaysLeft: daysLeft, expiresAt };
         }
@@ -815,27 +969,22 @@ ipcMain.handle('validate-license', async (event, rawKey) => {
         // Handle Genuine Lifetime or Annual licenses
         const finalType = isLifetime ? 'lifetime' : 'annual';
 
-        if (!hasFirstActivated) {
-          try {
-            const dataToEncrypt = JSON.stringify({
-              machineId: currentMachineId,
-              licenseKey: licenseKey,
-              licenseType: finalType,
-              licenseExpiresAt: expiresAt
-            });
-            const encryptedStr = encryptData(dataToEncrypt);
-            fs.writeFileSync(licenseDevicePath, encryptedStr, 'utf8');
-          } catch (writeErr) {
-            console.error('Failed to store machine fingerprint:', writeErr);
-          }
-        }
+        persistDeviceTrialRecord({
+          machineId: currentMachineId,
+          licenseKey: licenseKey,
+          licenseType: finalType,
+          licenseExpiresAt: isLifetime ? null : expiresAt,
+          trialUsed: true
+        });
 
         writeConfig({
           licenseValid: true,
           licenseKey,
           licenseType: finalType,
-          licenseExpiresAt: isLifetime ? null : expiresAt
-        });
+          licenseExpiresAt: isLifetime ? null : expiresAt,
+          trialActive: false,
+          trialUsed: true
+        }, true);
 
         return { ok: true, type: finalType, isLifetime, expiresAt };
       }
@@ -990,7 +1139,12 @@ ipcMain.on('save-icon', (event, dataUrl) => {
 });
 
 ipcMain.on('install-update', () => {
-  autoUpdater.quitAndInstall();
+  isQuitting = true;
+  try {
+    autoUpdater.quitAndInstall(true, true);
+  } catch (e) {
+    autoUpdater.quitAndInstall(false, true);
+  }
 });
 
 // Auto-Launch on PC Startup IPC Handlers
